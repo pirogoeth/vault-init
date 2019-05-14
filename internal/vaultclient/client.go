@@ -1,7 +1,10 @@
 package vaultclient
 
 import (
-	"github.com/davecgh/go-spew/spew"
+	"context"
+	"strings"
+	"time"
+
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -46,9 +49,9 @@ func (vc *Client) Check() error {
 	return nil
 }
 
-// BuildChildToken creates a token that can be used by the spawned
+// CreateChildToken creates a token that can be used by the spawned
 // child
-func (vc *Client) BuildChildToken() (*vaultApi.Secret, error) {
+func (vc *Client) CreateChildToken() (*vaultApi.Secret, error) {
 	tokenAuth := vc.vaultClient.Auth().Token()
 	var creatorFn TokenCreatorFunc
 	var noTokenParent bool
@@ -62,6 +65,9 @@ func (vc *Client) BuildChildToken() (*vaultApi.Secret, error) {
 	}
 
 	isRenewable := true
+	if vc.config.DisableTokenRenew {
+		isRenewable = false
+	}
 
 	secret, err := creatorFn(&vaultApi.TokenCreateRequest{
 		Policies:  vc.config.AccessPolicies,
@@ -87,31 +93,59 @@ func (vc *Client) SetToken(v string) error {
 	return nil
 }
 
-func (vc *Client) collectSecrets() ([]*vaultApi.Secret, error) {
+func (vc *Client) fetchSecrets() ([]*secret, error) {
 	logical := vc.vaultClient.Logical()
 
-	secrets := make([]*vaultApi.Secret, 0)
+	secrets := make([]*secret, 0)
 	for _, path := range vc.config.Paths {
 		secret, err := logical.Read(path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not get secret at path: %s", path)
 		}
 
-		secrets = append(secrets, secret)
+		secrets = append(secrets, newSecret(vc, path, secret))
 	}
 
 	return secrets, nil
 }
 
-// BuildContext compiles all secret paths into a map that can be used
-// as a template context.
-func (vc *Client) BuildContext() (map[string]interface{}, error) {
-	secrets, err := vc.collectSecrets()
+// intoEnviron templates a set of secret data into a map[string]string to use
+// as environment variables to the child program
+func (vc *Client) secretsIntoEnviron(secrets []*secret) (map[string]string, error) {
+	_, err := vc.secretsAsMap(secrets)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not collect secrets for context")
+		return nil, errors.Wrap(err, "could not create map from secrets")
 	}
 
-	spew.Dump(secrets)
+	return nil, errors.New("Client.secretsIntoEnviron() is not yet implemented")
+}
 
-	return nil, nil
+// secretsAsMap merges a bundle of secrets into a single map[string]interface{}
+// to be consumed by secretsIntoEnviron.
+func (vc *Client) secretsAsMap(secrets []*secret) (map[string]interface{}, error) {
+	data := make(map[string]interface{}, 0)
+	for _, secret := range secrets {
+		pathComponents := strings.Split(secret.Path, "/")
+		name := pathComponents[len(pathComponents)-1]
+		data[name] = secret.Data
+	}
+
+	return data, nil
+}
+
+// StartWatcher creates and lanches a watcher that submits environment
+// updates to the supervisor.
+func (vc *Client) StartWatcher(ctx context.Context, refreshDuration time.Duration) (chan map[string]string, error) {
+	// Build an updates channel we can pass back to the supervisor
+	updateCh := make(chan map[string]string, 1)
+
+	// Launch the watcher goroutine
+	watcher, err := newWatcher(vc, refreshDuration)
+	if err != nil {
+		return nil, errors.Wrap(err, "while creating watcher")
+	}
+
+	go watcher.Watch(ctx, updateCh)
+
+	return updateCh, nil
 }

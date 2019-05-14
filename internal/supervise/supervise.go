@@ -1,6 +1,8 @@
 package supervise
 
 import (
+	"context"
+
 	reaper "github.com/ramr/go-reaper"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,7 +19,7 @@ func NewSupervisor(config *Config) *Supervisor {
 
 // Start spawns the specified child process and runs a goroutine with
 // the subprocess reaper
-func (s *Supervisor) Start() error {
-	log.WithField("command", s.config.CommandString()).Info("Starting child subprocess")
+func (s *Supervisor) Start(ctx context.Context, updateCh chan map[string]string) error {
+	log.Info("Starting supervisor")
 	return nil
 }

@@ -22,16 +22,16 @@ But I also do not want to go back to placing secrets inside of workload definiti
 - We can piggyback on Vault's preset client configuration environment variables
   - https://github.com/hashicorp/vault/blob/master/api/client.go#L28
 - Connect to Vault using `VAULT_TOKEN`/`VAULT_TOKEN_FILE`
-  - Generate a token with policies given by `VINIT_ACCESS_POLICIES`
-  - Token should have `VAULT_TOKEN` as parent unless `VINIT_ORPHAN_TOKEN` is `true`
+  - Generate a token with policies given by `INIT_ACCESS_POLICIES`
+  - Token should have `VAULT_TOKEN` as parent unless `INIT_ORPHAN_TOKEN` is `true`
     - Token roles?
-  - Token should be renewable unless `VINIT_DISABLE_RENEW` is `true`
-  - Token should be provided to child as `VAULT_TOKEN` unless `VINIT_NO_INHERIT_TOKEN` is `true`
+  - Token should be renewable unless `INIT_DISABLE_RENEW` is `true`
+  - Token should be provided to child as `VAULT_TOKEN` unless `INIT_NO_INHERIT_TOKEN` is `true`
 - Use Go's `text/template` library to do templating into environment variables and files in the container
-  - Template context loaded in based on comma-separated `VINIT_PATHS`
+  - Template context loaded in based on comma-separated `INIT_PATHS`
     - Example:
-      - `export VINIT_PATHS="/secret/services/concourse"`
-      - `export VINIT_PATHS="/secret/services/sourcegraph,/secret/services/oauth2-proxy/sourcegraph"`
+      - `export INIT_PATHS="/secret/services/concourse"`
+      - `export INIT_PATHS="/secret/services/sourcegraph,/secret/services/oauth2-proxy/sourcegraph"`
   - When multiple paths are provided, try to contextually diff the URLs to create nested structure
     - If only one path is provided, it would become the top-level data
     - If more than one path is provided, and the paths share ancestry:

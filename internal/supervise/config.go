@@ -33,9 +33,3 @@ func (c *Config) Args() []string {
 func (c *Config) CommandString() string {
 	return strings.Join(c.Command, " ")
 }
-
-// Start will run the SupervisedCommand with the given environment mapping
-func (c *Config) Start(environment map[string]string) error {
-	log.Fatalf("SupervisedCommand.Start() not implemented")
-	return nil
-}

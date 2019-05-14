@@ -18,6 +18,10 @@ type Config struct {
 	// should be created with.
 	AccessPolicies []string
 
+	// DisableTokenRenew defines the "renewability" of the token. If true,
+	// sets the `renewable` flag to false on token creation.
+	DisableTokenRenew bool
+
 	// OrphanToken defines whether the created token should be an orphan
 	// or not.
 	OrphanToken bool
@@ -39,11 +43,21 @@ type Client struct {
 	config        *Config
 	vaultClient   *vaultApi.Client
 	tokenRenewer  *vaultApi.Renewer
-	secretMonitor *secretMonitor
+	secretWatcher *watcher
 }
 
-type secretMonitor struct {
-	client   *Client
-	secrets  []*vaultApi.Secret
-	updateCh chan []*vaultApi.Secret
+type watcher struct {
+	client          *Client
+	secrets         []*secret
+	refreshDuration time.Duration
+}
+
+type secret struct {
+	*vaultApi.Secret
+
+	// client is a reference to the vaultclient.Client
+	client *Client
+
+	// Path is the logical path at which this secret was found
+	Path string
 }

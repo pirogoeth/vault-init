@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"time"
 
 	"github.com/alexflint/go-arg"
 	log "github.com/sirupsen/logrus"
@@ -21,13 +24,17 @@ func main() {
 	}
 
 	// Set log level according to verbosity
-	if *args.Verbose {
+	if *args.InitVerbose {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	// Make a context for controlling goroutines
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Load vaultclient-specific args into the vaultclient.Config struct
 	vaultCfg := vaultclient.NewConfigWithDefaults()
 	vaultCfg.AccessPolicies = args.InitAccessPolicies
+	vaultCfg.DisableTokenRenew = *args.InitDisableTokenRenew
 	vaultCfg.OrphanToken = *args.InitOrphanToken
 	vaultCfg.Paths = args.InitPaths
 	vaultCfg.TokenRenew = *args.InitTokenRenew
@@ -51,7 +58,7 @@ func main() {
 	}
 
 	// Create the child token and downgrade the Vault client to use it
-	childToken, err := vaultClient.BuildChildToken()
+	childToken, err := vaultClient.CreateChildToken()
 	if err != nil {
 		log.WithError(err).Fatalf("Could not create child token")
 	}
@@ -73,12 +80,16 @@ func main() {
 		log.WithError(err).Fatalf("Could not use child token")
 	}
 
-	// Build the initial context
-	log.WithField("paths", args.InitPaths).Debugf("Building secrets context")
-	_, err = vaultClient.BuildContext()
+	// Start the child token renewer
+
+	// Start the secret watcher
+	log.WithField("paths", args.InitPaths).Debugf("Starting secrets watcher")
+	updateCh, err := vaultClient.StartWatcher(ctx, *args.InitRefreshDuration)
 	if err != nil {
-		log.WithError(err).Fatalf("Could not build initial secrets context")
+		log.WithError(err).Fatalf("Could not start secrets watcher")
 	}
+
+	defer close(updateCh)
 
 	// Configure the process supervisor
 	supervisorCfg := &supervise.Config{
@@ -90,10 +101,28 @@ func main() {
 	supervisor := supervise.NewSupervisor(supervisorCfg)
 
 	// Launch the child process inside of the supervisor
-	if err := supervisor.Start(); err != nil {
+	if err := supervisor.Start(ctx, updateCh); err != nil {
 		log.WithError(err).Fatal("Supervisor loop failed")
 	}
 
+	waitForSignal(ctx, cancel)
+
 	// Cleanup and shutdown
-	log.Infof("Shutting down")
+	log.Infof("Supervisor shutting down")
+}
+
+func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+
+	for {
+		select {
+		case sig := <-sigChan:
+			log.Infof("Received signal %s, stopping", sig)
+			cancel()
+			return
+		case <-time.After(1 * time.Second):
+			continue
+		}
+	}
 }
