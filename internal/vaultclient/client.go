@@ -1,8 +1,11 @@
 package vaultclient
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
@@ -103,6 +106,11 @@ func (vc *Client) fetchSecrets() ([]*secret, error) {
 			return nil, errors.Wrapf(err, "could not get secret at path: %s", path)
 		}
 
+		if secret == nil {
+			log.Warnf("secret at %s is nil, skipping", path)
+			continue
+		}
+
 		secrets = append(secrets, newSecret(vc, path, secret))
 	}
 
@@ -112,12 +120,51 @@ func (vc *Client) fetchSecrets() ([]*secret, error) {
 // intoEnviron templates a set of secret data into a map[string]string to use
 // as environment variables to the child program
 func (vc *Client) secretsIntoEnviron(secrets []*secret) (map[string]string, error) {
-	_, err := vc.secretsAsMap(secrets)
+	secretCtx, err := vc.secretsAsMap(secrets)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create map from secrets")
 	}
 
-	return nil, errors.New("Client.secretsIntoEnviron() is not yet implemented")
+	environ := os.Environ()
+	envMap := make(map[string]string, 0)
+
+	for _, envVar := range environ {
+		pair := strings.SplitN(envVar, "=", 2)
+
+		key, value := pair[0], pair[1]
+		if vc.keyIsFiltered(key) {
+			continue
+		}
+
+		// THIS CHUNK TO BE REPLACED BY ENVTEMPLATE
+		tpl, err := template.New(key).Parse(value)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse environment variable template")
+		}
+
+		rendered := bytes.NewBufferString("")
+		err = tpl.Execute(rendered, secretCtx)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not render template")
+		}
+		// END CHUNK TO BE REPLACE BY ENVTEMPLATE
+
+		envMap[key] = rendered.String()
+	}
+
+	return envMap, nil
+}
+
+func (vc *Client) keyIsFiltered(key string) bool {
+	if strings.HasPrefix(key, "INIT_") {
+		return true
+	} else if strings.HasPrefix(key, "VAULT_") {
+		if vc.config.NoInheritToken {
+			return true
+		}
+	}
+
+	return false
 }
 
 // secretsAsMap merges a bundle of secrets into a single map[string]interface{}
@@ -130,14 +177,58 @@ func (vc *Client) secretsAsMap(secrets []*secret) (map[string]interface{}, error
 		data[name] = secret.Data
 	}
 
+	// If token inheritance is enabled, include the Vault connection
+	// information in the environment context
+	if !vc.config.NoInheritToken {
+		data["Vault"] = vc.vaultSettingsAsMap()
+	}
+
 	return data, nil
+}
+
+func (vc *Client) vaultSettingsAsMap() map[string]interface{} {
+	data := make(map[string]interface{}, 0)
+	tlsConfig := make(map[string]interface{}, 0)
+
+	if v := os.Getenv(vaultApi.EnvVaultCACert); v != "" {
+		tlsConfig["ca_cert"] = v
+	}
+
+	if v := os.Getenv(vaultApi.EnvVaultCAPath); v != "" {
+		tlsConfig["ca_path"] = v
+	}
+
+	if v := os.Getenv(vaultApi.EnvVaultClientCert); v != "" {
+		tlsConfig["cert"] = v
+	}
+
+	if v := os.Getenv(vaultApi.EnvVaultClientKey); v != "" {
+		tlsConfig["key"] = v
+	}
+
+	if v := os.Getenv(vaultApi.EnvVaultSkipVerify); v != "" {
+		tlsConfig["skip_verify"] = v
+	}
+
+	if v := os.Getenv(vaultApi.EnvVaultTLSServerName); v != "" {
+		tlsConfig["server_name"] = v
+	}
+
+	data["address"] = vc.config.Address
+	data["agent_address"] = vc.config.AgentAddress
+	data["max_retries"] = vc.config.MaxRetries
+	data["timeout"] = vc.config.Timeout.String()
+	data["tls"] = tlsConfig
+	data["token"] = vc.vaultClient.Token()
+
+	return data
 }
 
 // StartWatcher creates and lanches a watcher that submits environment
 // updates to the supervisor.
-func (vc *Client) StartWatcher(ctx context.Context, refreshDuration time.Duration) (chan map[string]string, error) {
+func (vc *Client) StartWatcher(ctx context.Context, refreshDuration time.Duration) (chan []string, error) {
 	// Build an updates channel we can pass back to the supervisor
-	updateCh := make(chan map[string]string, 1)
+	updateCh := make(chan []string, 1)
 
 	// Launch the watcher goroutine
 	watcher, err := newWatcher(vc, refreshDuration)

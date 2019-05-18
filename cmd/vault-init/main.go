@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/alexflint/go-arg"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +34,7 @@ func main() {
 	vaultCfg := vaultclient.NewConfigWithDefaults()
 	vaultCfg.AccessPolicies = args.InitAccessPolicies
 	vaultCfg.DisableTokenRenew = *args.InitDisableTokenRenew
+	vaultCfg.NoInheritToken = *args.InitNoInheritToken
 	vaultCfg.OrphanToken = *args.InitOrphanToken
 	vaultCfg.Paths = args.InitPaths
 	vaultCfg.TokenRenew = *args.InitTokenRenew
@@ -100,20 +100,20 @@ func main() {
 	// Create the supervisor with the configuration
 	supervisor := supervise.NewSupervisor(supervisorCfg)
 
-	// Launch the child process inside of the supervisor
+	go waitForSignal(ctx, cancel)
+
+	// Launch the supervisor
 	if err := supervisor.Start(ctx, updateCh); err != nil {
-		log.WithError(err).Fatal("Supervisor loop failed")
+		log.WithError(err).Errorf("Supervisor returned an error")
 	}
 
-	waitForSignal(ctx, cancel)
-
 	// Cleanup and shutdown
-	log.Infof("Supervisor shutting down")
+	log.Infof("vault-init shutting down")
 }
 
 func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Interrupt, os.Kill)
 
 	for {
 		select {
@@ -121,8 +121,6 @@ func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
 			log.Infof("Received signal %s, stopping", sig)
 			cancel()
 			return
-		case <-time.After(1 * time.Second):
-			continue
 		}
 	}
 }

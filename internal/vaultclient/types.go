@@ -22,6 +22,10 @@ type Config struct {
 	// sets the `renewable` flag to false on token creation.
 	DisableTokenRenew bool
 
+	// NoInheritToken controls whether the vaultclient sends VAULT_TOKEN
+	// and Vault settings to the child process
+	NoInheritToken bool
+
 	// OrphanToken defines whether the created token should be an orphan
 	// or not.
 	OrphanToken bool
