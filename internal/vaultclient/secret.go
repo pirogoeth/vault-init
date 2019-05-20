@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
 func newSecret(client *Client, path string, apiSecret *vaultApi.Secret) *secret {
+	log.Tracef(spew.Sprintf("creating new secret with data: %#v", apiSecret.Data))
 	return &secret{
 		client: client,
 		Path:   path,
@@ -166,10 +168,14 @@ func (s *secret) dataMap() map[string]interface{} {
 			continue
 		}
 
+		component = strings.ReplaceAll(component, "-", "_")
+
 		tmp := make(map[string]interface{}, 0)
 		tmp[component] = data
 		data = tmp
 	}
+
+	log.Tracef(spew.Sprintf("nested secret data looks like: %#v", data))
 
 	return data
 }

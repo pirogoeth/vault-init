@@ -6,7 +6,7 @@ Previously, I could use Nomad's templating to insert data from Vault into an app
 Since we're now using Docker's Swarm Mode instead, I can't use any fancy templating.
 But I also do not want to go back to placing secrets inside of workload definitions.
 
-## Design Decisions
+## Design Decisions / Roadmap
 
 - [X] Will run as an init system inside a container
   - Luckily this will not require a ton of functionality
@@ -23,10 +23,11 @@ But I also do not want to go back to placing secrets inside of workload definiti
   - https://github.com/hashicorp/vault/blob/master/api/client.go#L28
 - [X] Connect to Vault using `VAULT_TOKEN`/`VAULT_TOKEN_FILE`
   - [X] Generate a token with policies given by `INIT_ACCESS_POLICIES`
-  - [X] Token should have `VAULT_TOKEN` as parent unless `INIT_ORPHAN_TOKEN` is `true`
-    - [ ] Token roles?
-  - [X] Token should be renewable unless `INIT_DISABLE_RENEW` is `true`
-  - [X] Token should be provided to child as `VAULT_TOKEN` unless `INIT_NO_INHERIT_TOKEN` is `true`
+    - [X] Token should have `VAULT_TOKEN` as parent unless `INIT_ORPHAN_TOKEN` is `true`
+      - [ ] Token roles?
+    - [X] Token should be renewable unless `INIT_DISABLE_RENEW` is `true`
+    - [X] Token should be provided to child as `VAULT_TOKEN` unless `INIT_NO_INHERIT_TOKEN` is `true`
+    - [X] Token should be revoked on `vault-init` exit
 - [X] Use Go's `text/template` library to do templating into environment variables and files in the container
   - [X] Template context loaded in based on comma-separated `INIT_PATHS`
     - Example:
@@ -49,3 +50,10 @@ But I also do not want to go back to placing secrets inside of workload definiti
         - `.Data.kv1.services.haproxy`
   - Helpers for certain actions(?)
     - Undetermined
+- [~] Correctly handle renewable secrets
+  - [~] Leased secrets
+    - [X] Should be renewed
+    - [ ] Should be revoked when `vault-init` exits
+  - [~] Auth secrets
+    - [X] Should be renewed
+    - [ ] Should be revoked when `vault-init` exits
