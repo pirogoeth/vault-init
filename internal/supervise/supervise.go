@@ -91,7 +91,18 @@ func (s *Supervisor) spawnChild(ctx context.Context, environ []string) (*exec.Cm
 	child := exec.CommandContext(ctx, program, s.config.Args()...)
 	child.Env = environ
 
-	// TODO: Launch stdout and stderr forwarders
+	stdoutPipe, err := child.StdoutPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get stdout pipe")
+	}
+
+	stderrPipe, err := child.StderrPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get stderr pipe")
+	}
+
+	fwd := newForwarder(stdoutPipe, stderrPipe)
+	fwd.Start(ctx)
 
 	log.WithFields(log.Fields{
 		"program": program,

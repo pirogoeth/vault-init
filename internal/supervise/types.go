@@ -1,6 +1,11 @@
 package supervise
 
-import "os"
+import (
+	"context"
+	"os"
+
+	"github.com/mitchellh/go-linereader"
+)
 
 // Config holds the configuration for the supervisor
 type Config struct {
@@ -11,6 +16,15 @@ type Config struct {
 	// DisableReaper tells the supervisor not to start the subprocess
 	// reaper for cases when vault-init is not running as pid 1
 	DisableReaper bool
+}
+
+// forwarder takes a stdout and stderr pipe from a child program
+// and muxes them both into our logger
+type forwarder struct {
+	stdoutCh *linereader.Reader
+	stderrCh *linereader.Reader
+
+	cancel context.CancelFunc
 }
 
 // Supervisor is the actual supervisor instance, providing methods

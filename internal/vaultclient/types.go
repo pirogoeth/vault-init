@@ -52,7 +52,6 @@ type Client struct {
 
 type watcher struct {
 	client          *Client
-	secrets         []*secret
 	refreshDuration time.Duration
 }
 
@@ -61,6 +60,9 @@ type secret struct {
 
 	// client is a reference to the vaultclient.Client
 	client *Client
+
+	// renewer is a reference to the running vaultApi.Renewer
+	renewer *vaultApi.Renewer
 
 	// Path is the logical path at which this secret was found
 	Path string

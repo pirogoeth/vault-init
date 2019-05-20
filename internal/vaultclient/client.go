@@ -1,16 +1,17 @@
 package vaultclient
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"strings"
-	"text/template"
 	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"glow.dev.maio.me/seanj/vault-init/internal/template"
 )
 
 // NewClient creates a new Vault API client wrapper
@@ -54,7 +55,7 @@ func (vc *Client) Check() error {
 
 // CreateChildToken creates a token that can be used by the spawned
 // child
-func (vc *Client) CreateChildToken() (*vaultApi.Secret, error) {
+func (vc *Client) CreateChildToken(displayName string) (*secret, error) {
 	tokenAuth := vc.vaultClient.Auth().Token()
 	var creatorFn TokenCreatorFunc
 	var noTokenParent bool
@@ -67,21 +68,19 @@ func (vc *Client) CreateChildToken() (*vaultApi.Secret, error) {
 		noTokenParent = false
 	}
 
-	isRenewable := true
-	if vc.config.DisableTokenRenew {
-		isRenewable = false
-	}
+	renewable := !vc.config.DisableTokenRenew
 
 	secret, err := creatorFn(&vaultApi.TokenCreateRequest{
-		Policies:  vc.config.AccessPolicies,
 		NoParent:  noTokenParent,
-		Renewable: &isRenewable,
+		Policies:  vc.config.AccessPolicies,
+		Renewable: &renewable,
+		TTL:       vc.config.TokenTTL,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create child token")
 	}
 
-	return secret, nil
+	return newSecret(vc, "CHILD_TOKEN", secret), nil
 }
 
 // SetToken sets the underlying Vault authentication token. Performs a
@@ -136,20 +135,15 @@ func (vc *Client) secretsIntoEnviron(secrets []*secret) (map[string]string, erro
 			continue
 		}
 
-		// THIS CHUNK TO BE REPLACED BY ENVTEMPLATE
-		tpl, err := template.New(key).Parse(value)
+		tpl, err := template.NewEnvTemplate(key, value)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse environment variable template")
 		}
 
-		rendered := bytes.NewBufferString("")
-		err = tpl.Execute(rendered, secretCtx)
+		envMap[key], err = tpl.Render(secretCtx)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not render template")
+			return nil, errors.Wrap(err, "could not render environment variable template")
 		}
-		// END CHUNK TO BE REPLACE BY ENVTEMPLATE
-
-		envMap[key] = rendered.String()
 	}
 
 	return envMap, nil
@@ -171,10 +165,11 @@ func (vc *Client) keyIsFiltered(key string) bool {
 // to be consumed by secretsIntoEnviron.
 func (vc *Client) secretsAsMap(secrets []*secret) (map[string]interface{}, error) {
 	data := make(map[string]interface{}, 0)
+
 	for _, secret := range secrets {
-		pathComponents := strings.Split(secret.Path, "/")
-		name := pathComponents[len(pathComponents)-1]
-		data[name] = secret.Data
+		if err := mergo.Merge(&data, secret.dataMap()); err != nil {
+			return nil, errors.Wrap(err, "could not merge secret to data")
+		}
 	}
 
 	// If token inheritance is enabled, include the Vault connection

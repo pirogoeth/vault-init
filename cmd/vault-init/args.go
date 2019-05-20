@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	defaultDebug             bool   = false
 	defaultDisableTokenRenew bool   = false
 	defaultNoInheritToken    bool   = false
 	defaultNoReaper          bool   = false
@@ -23,20 +24,21 @@ const (
 )
 
 type args struct {
-	Command               []string       `arg:"positional"`
-	InitAccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
-	InitDisableTokenRenew *bool          `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the resulting token unable to be renewed"`
-	InitOrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
-	InitNoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
-	InitNoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
-	InitPaths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
-	InitRefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
-	InitTokenRenew        *time.Duration `arg:"--token-renewal,env:INIT_TOKEN_RENEWAL" help:"Period at which to renew the Vault token"`
-	InitTokenTTL          string         `arg:"--token-ttl,env:INIT_TOKEN_TTL" help:"TTL of the token, minimum duration of 1 hour"`
-	InitVerbose           *bool          `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
-	VaultAddress          string         `arg:"--vault-address,env:VAULT_ADDR" help:"Address to use to connect to Vault"`
-	VaultToken            string         `arg:"--vault-token,env:VAULT_TOKEN" help:"Token to use to authenticate to Vault"`
-	VaultTokenFile        string         `arg:"--vault-token-file,env:VAULT_TOKEN_FILE" help:"File containing token to use to authenticate to Vault"`
+	Command           []string       `arg:"positional"`
+	Debug             *bool          `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
+	AccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
+	DisableTokenRenew *bool          `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
+	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
+	NoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
+	NoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
+	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
+	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
+	TokenRenew        *time.Duration `arg:"--token-renewal,env:INIT_TOKEN_RENEWAL" help:"Period at which to renew the Vault token"`
+	TokenTTL          string         `arg:"--token-ttl,env:INIT_TOKEN_TTL" help:"TTL of the token, maximum suffix is hour"`
+	VaultAddress      string         `arg:"--vault-address,env:VAULT_ADDR" help:"Address to use to connect to Vault"`
+	VaultToken        string         `arg:"--vault-token,env:VAULT_TOKEN" help:"Token to use to authenticate to Vault"`
+	VaultTokenFile    string         `arg:"--vault-token-file,env:VAULT_TOKEN_FILE" help:"File containing token to use to authenticate to Vault"`
+	Verbose           *bool          `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
 }
 
 func (args) Version() string {
@@ -46,49 +48,54 @@ func (args) Version() string {
 func (a *args) CheckAndSetDefaults() error {
 	var err error
 
-	if a.InitDisableTokenRenew == nil {
-		a.InitDisableTokenRenew = new(bool)
-		*a.InitDisableTokenRenew = defaultDisableTokenRenew
+	if a.Debug == nil {
+		a.Debug = new(bool)
+		*a.Debug = defaultDebug
 	}
 
-	if a.InitOrphanToken == nil {
-		a.InitOrphanToken = new(bool)
-		*a.InitOrphanToken = defaultOrphanToken
+	if a.DisableTokenRenew == nil {
+		a.DisableTokenRenew = new(bool)
+		*a.DisableTokenRenew = defaultDisableTokenRenew
 	}
 
-	if a.InitNoInheritToken == nil {
-		a.InitNoInheritToken = new(bool)
-		*a.InitNoInheritToken = defaultNoInheritToken
+	if a.OrphanToken == nil {
+		a.OrphanToken = new(bool)
+		*a.OrphanToken = defaultOrphanToken
 	}
 
-	if a.InitNoReaper == nil {
-		a.InitNoReaper = new(bool)
-		*a.InitNoReaper = defaultNoReaper
+	if a.NoInheritToken == nil {
+		a.NoInheritToken = new(bool)
+		*a.NoInheritToken = defaultNoInheritToken
 	}
 
-	if a.InitTokenRenew == nil {
-		a.InitTokenRenew = new(time.Duration)
-		*a.InitTokenRenew, err = time.ParseDuration(defaultTokenRenew)
+	if a.NoReaper == nil {
+		a.NoReaper = new(bool)
+		*a.NoReaper = defaultNoReaper
+	}
+
+	if a.TokenRenew == nil {
+		a.TokenRenew = new(time.Duration)
+		*a.TokenRenew, err = time.ParseDuration(defaultTokenRenew)
 		if err != nil {
 			return errors.Wrapf(err, "could not parse default token renewal duration: `%s`", defaultTokenRenew)
 		}
 	}
 
-	if a.InitRefreshDuration == nil {
-		a.InitRefreshDuration = new(time.Duration)
-		*a.InitRefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
+	if a.RefreshDuration == nil {
+		a.RefreshDuration = new(time.Duration)
+		*a.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
 		if err != nil {
 			return errors.Wrapf(err, "could not parse default secret refresh duration: `%s`", defaultRefreshDuration)
 		}
 	}
 
-	if a.InitTokenTTL == "" {
-		a.InitTokenTTL = defaultTokenTTL
+	if a.TokenTTL == "" {
+		a.TokenTTL = defaultTokenTTL
 	}
 
-	if a.InitVerbose == nil {
-		a.InitVerbose = new(bool)
-		*a.InitVerbose = defaultVerbose
+	if a.Verbose == nil {
+		a.Verbose = new(bool)
+		*a.Verbose = defaultVerbose
 	}
 
 	if a.VaultAddress != "" {

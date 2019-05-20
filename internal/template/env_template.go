@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bytes"
 	"text/template"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,14 @@ func NewEnvTemplate(envKey, envValue string) (*EnvTemplate, error) {
 	return envTpl, nil
 }
 
-func (e *EnvTemplate) Render(context map[string]string) {
+// Render returns a string with the rendered template
+func (e *EnvTemplate) Render(context map[string]interface{}) (string, error) {
+	rendered := bytes.NewBufferString("")
 
+	err := e.template.Execute(rendered, context)
+	if err != nil {
+		return "", errors.Wrap(err, "could not render template")
+	}
+
+	return rendered.String(), nil
 }
