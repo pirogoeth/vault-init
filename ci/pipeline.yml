@@ -21,13 +21,13 @@ resources:
 - name: vault-init-alpine
   type: registry-image
   source:
-    repository: (( grab meta.image.vault-init.repo ))
+    repository: (( grab meta.registry.image.repo ))
     .: (( inject meta.registry.auth ))
 
 - name: vault-init-debian
   type: registry-image
   source:
-    repository: (( grab meta.image.vault-init.repo ))
+    repository: (( grab meta.registry.image.repo ))
     .: (( inject meta.registry.auth ))
 
 jobs:
