@@ -12,7 +12,7 @@ meta:
       username: ((glow_registry_ci.username))
       password: ((glow_registry_ci.password))
     image:
-      context: vault-init-git/
+      context: source/
       repo: (( concat meta.registry.repository "/vault-init" ))
       tag: latest
 
