@@ -13,7 +13,7 @@ meta:
       password: ((glow_registry_ci.password))
     image:
       context: source/
-      repo: (( concat meta.registry.repository "/vault-init" ))
+      repo: (( concat meta.registry.repository "/pirogoeth/vault-init" ))
       tag: latest
 
   repository:
