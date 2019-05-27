@@ -1,0 +1,25 @@
+---
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: concourse/builder-task
+
+params:
+  BUILD_ARG_DOCKER_CHANNEL: stable
+  CONTEXT:
+  REPOSITORY:
+  TAG: latest
+
+inputs:
+- name: pipeline
+
+outputs:
+- name: image
+
+caches:
+- path: cache
+
+run: {path: build}

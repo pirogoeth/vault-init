@@ -1,0 +1,26 @@
+meta:
+  target:   glow
+  url:      https://concourse.dev.maio.me
+  team:     main
+
+  name:     vault-init
+  pipeline: vault-init
+
+  registry:
+    repository: containers.dev.maio.me
+    auth:
+      username: ((glow_registry_ci.username))
+      password: ((glow_registry_ci.password))
+    image:
+      context: vault-init-git/
+      repo: (( concat meta.registry.repository "/vault-init" ))
+      tag: latest
+
+  repository:
+    source:
+      uri: https://glow.dev.maio.me/seanj/vault-init.git
+      branch: master
+
+  tasks:
+    img-build: pipeline/ci/tasks/img/build.yml
+    img-build-nocache: pipeline/ci/tasks/img/build-nocache.yml

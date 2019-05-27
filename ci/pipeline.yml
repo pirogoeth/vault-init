@@ -1,0 +1,70 @@
+---
+
+resources:
+- name: source
+  type: git
+  source:
+    .: (( inject meta.repository.source ))
+
+- name: alpine
+  type: registry-image
+  source:
+    repository: containers.dev.maio.me/library/alpine
+    tag: latest
+
+- name: debian
+  type: registry-image
+  source:
+    repository: debian
+    tag: 9-slim
+
+- name: vault-init-alpine
+  type: registry-image
+  source:
+    repository: (( grab meta.image.vault-init.repo ))
+    .: (( inject meta.registry.auth ))
+
+- name: vault-init-debian
+  type: registry-image
+  source:
+    repository: (( grab meta.image.vault-init.repo ))
+    .: (( inject meta.registry.auth ))
+
+jobs:
+- name: "build vault-init:alpine"
+  public: true
+  plan:
+  - get: alpine
+    trigger: true
+  - get: source
+    trigger: true
+  - task: "build image"
+    file: (( grab meta.tasks.img-build ))
+    privileged: true
+    params:
+      REPOSITORY: (( grab meta.registry.image.repo ))
+      TAG: (( grab meta.registry.image.tag || "latest" ))
+      CONTEXT: (( grab meta.registry.image.context ))
+      DOCKERFILE: (( concat meta.registry.image.context "Dockerfile" ))
+  - put: vault-init-alpine
+    params:
+      image: image/image.tar
+
+- name: "build vault-init:debian"
+  public: true
+  plan:
+  - get: debian
+    trigger: true
+  - get: source
+    trigger: true
+  - task: "build image"
+    file: (( grab meta.tasks.img-build ))
+    privileged: true
+    params:
+      REPOSITORY: (( grab meta.registry.image.repo ))
+      TAG: (( concat "debian-" meta.registry.image.tag || "latest" ))
+      CONTEXT: (( grab meta.registry.image.context ))
+      DOCKERFILE: (( concat meta.registry.image.context "Dockerfile.debian" ))
+  - put: vault-init-debian
+    params:
+      image: image/image.tar
