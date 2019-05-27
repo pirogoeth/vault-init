@@ -22,12 +22,14 @@ resources:
   type: registry-image
   source:
     repository: (( grab meta.registry.image.repo ))
+    tag: (( grab meta.registry.image.tag ))
     .: (( inject meta.registry.auth ))
 
 - name: vault-init-debian
   type: registry-image
   source:
     repository: (( grab meta.registry.image.repo ))
+    tag: (( concat "debian-" meta.registry.image.tag ))
     .: (( inject meta.registry.auth ))
 
 jobs:
@@ -62,7 +64,7 @@ jobs:
     privileged: true
     params:
       REPOSITORY: (( grab meta.registry.image.repo ))
-      TAG: (( concat "debian-" meta.registry.image.tag || "latest" ))
+      TAG: (( concat "debian-" meta.registry.image.tag ))
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: (( concat meta.registry.image.context "Dockerfile.debian" ))
   - put: vault-init-debian
