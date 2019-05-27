@@ -22,5 +22,5 @@ meta:
       branch: master
 
   tasks:
-    img-build: pipeline/ci/tasks/img/build.yml
-    img-build-nocache: pipeline/ci/tasks/img/build-nocache.yml
+    img-build: source/ci/tasks/img/build.yml
+    img-build-nocache: source/ci/tasks/img/build-nocache.yml
