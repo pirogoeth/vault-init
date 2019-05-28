@@ -3,23 +3,27 @@
 resources:
 - name: source
   type: git
+  icon: git
   source:
     .: (( inject meta.repository.source ))
 
 - name: alpine
   type: registry-image
+  icon: docker
   source:
     repository: containers.dev.maio.me/library/alpine
     tag: latest
 
 - name: debian
   type: registry-image
+  icon: docker
   source:
     repository: debian
     tag: 9-slim
 
 - name: vault-init-alpine
   type: registry-image
+  icon: docker
   source:
     repository: (( grab meta.registry.image.repo ))
     tag: (( grab meta.registry.image.tag ))
@@ -27,12 +31,21 @@ resources:
 
 - name: vault-init-debian
   type: registry-image
+  icon: docker
   source:
     repository: (( grab meta.registry.image.repo ))
     tag: (( concat "debian-" meta.registry.image.tag ))
     .: (( inject meta.registry.auth ))
 
 jobs:
+- name: "go test"
+  public: true
+  plan:
+  - get: source
+    trigger: true
+  - task: "run tests"
+    file: (( grab meta.tasks.golang-test ))
+
 - name: "build vault-init:alpine"
   public: true
   plan:
@@ -40,6 +53,8 @@ jobs:
     trigger: true
   - get: source
     trigger: true
+    passed:
+    - "go test"
   - task: "build image"
     file: (( grab meta.tasks.img-build ))
     privileged: true
@@ -59,6 +74,8 @@ jobs:
     trigger: true
   - get: source
     trigger: true
+    passed:
+    - "go test"
   - task: "build image"
     file: (( grab meta.tasks.img-build ))
     privileged: true
