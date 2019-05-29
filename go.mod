@@ -11,4 +11,5 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/ramr/go-reaper v0.0.0-20170814234526-35f6a64e44ff
 	github.com/sirupsen/logrus v1.4.1
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
