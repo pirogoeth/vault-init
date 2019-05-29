@@ -2,6 +2,7 @@ package supervise
 
 import (
 	"context"
+	"io"
 	"os"
 
 	"github.com/mitchellh/go-linereader"
@@ -23,6 +24,9 @@ type Config struct {
 type forwarder struct {
 	stdoutCh *linereader.Reader
 	stderrCh *linereader.Reader
+
+	outWriter io.Writer
+	errWriter io.Writer
 
 	cancel context.CancelFunc
 }

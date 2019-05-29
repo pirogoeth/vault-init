@@ -3,6 +3,7 @@ package supervise
 import (
 	"context"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/mitchellh/go-linereader"
@@ -12,9 +13,11 @@ import (
 // NewForwarder initializes a forwarder instance with the given pipe pair
 func newForwarder(stdoutPipe, stderrPipe io.ReadCloser) *forwarder {
 	return &forwarder{
-		cancel:   nil,
-		stdoutCh: linereader.New(stdoutPipe),
-		stderrCh: linereader.New(stderrPipe),
+		cancel:    nil,
+		stdoutCh:  linereader.New(stdoutPipe),
+		stderrCh:  linereader.New(stderrPipe),
+		outWriter: os.Stdout,
+		errWriter: os.Stderr,
 	}
 }
 
@@ -40,13 +43,13 @@ func (f *forwarder) run(ctx context.Context) {
 				continue
 			}
 
-			log.WithContext(ctx).Infof("[STDOUT] %s", line)
+			io.WriteString(os.Stdout, line)
 		case line := <-f.stderrCh.Ch:
 			if strings.TrimSpace(line) == "" {
 				continue
 			}
 
-			log.WithContext(ctx).Errorf("[STDERR] %s", line)
+			io.WriteString(os.Stderr, line)
 		}
 	}
 }

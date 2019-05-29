@@ -13,7 +13,8 @@ import (
 
 const (
 	defaultDebug             bool   = false
-	defaultDisableTokenRenew bool   = false
+    defaultDisableTokenRenew bool   = false
+    defaultLogFormat         string = "default"
 	defaultNoInheritToken    bool   = false
 	defaultNoReaper          bool   = false
 	defaultOrphanToken       bool   = false
@@ -24,13 +25,15 @@ const (
 )
 
 type args struct {
-	Command           []string       `arg:"positional"`
-	Debug             *bool          `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
+	Command []string `arg:"positional"`
+
 	AccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
+	Debug             *bool          `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
 	DisableTokenRenew *bool          `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
-	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
+	LogFormat         string         `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
 	NoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
 	NoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
+	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
 	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
 	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
 	TokenRenew        *time.Duration `arg:"--token-renewal,env:INIT_TOKEN_RENEWAL" help:"Period at which to renew the Vault token"`
@@ -135,7 +138,11 @@ func (a *args) CheckAndSetDefaults() error {
 		if os.Getenv(vaultApi.EnvVaultToken) != a.VaultToken {
 			os.Setenv(vaultApi.EnvVaultToken, a.VaultToken)
 		}
-	}
+    }
+    
+    if a.LogFormat == "" {
+        a.LogFormat = defaultLogFormat
+    }
 
 	return nil
 }

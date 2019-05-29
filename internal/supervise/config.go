@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,6 +31,11 @@ func (c *Config) Args() []string {
 }
 
 // CommandString returns the command to execute as a string
-func (c *Config) CommandString() string {
-	return strings.Join(c.Command, " ")
+func (c *Config) CommandString() (string, error) {
+	prog, err := c.Program()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get program path")
+	}
+
+	return strings.Join(append([]string{prog}, c.Args()...), " "), nil
 }
