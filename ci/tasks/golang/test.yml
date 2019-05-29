@@ -12,6 +12,4 @@ inputs:
 - name: source
 
 run:
-  path: "/usr/local/go/bin/go"
-  args: ["test", "-v"]
-  dir: "./source"
+  path: source/ci/tasks/golang/test.sh

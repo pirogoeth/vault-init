@@ -45,6 +45,8 @@ jobs:
     trigger: true
   - task: "run tests"
     file: (( grab meta.tasks.golang-test ))
+    params:
+      PACKAGE: glow.dev.maio.me/seanj/vault-init
 
 - name: "build vault-init:alpine"
   public: true
