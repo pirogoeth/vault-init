@@ -8,6 +8,9 @@ image_resource:
     repository: golang
     tag: latest
 
+params:
+  PACKAGE:
+
 inputs:
 - name: source
 
