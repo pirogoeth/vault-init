@@ -43,13 +43,13 @@ func (f *forwarder) run(ctx context.Context) {
 				continue
 			}
 
-			io.WriteString(os.Stdout, line)
+			log.WithField("stream", "stdout").Infof(line)
 		case line := <-f.stderrCh.Ch:
 			if strings.TrimSpace(line) == "" {
 				continue
 			}
 
-			io.WriteString(os.Stderr, line)
+			log.WithField("stream", "stderr").Infof(line)
 		}
 	}
 }

@@ -127,6 +127,8 @@ func (s *Supervisor) restartChild(parentCtx context.Context, prevCancel context.
 
 	child, err := s.spawnChild(childCtx, environ)
 	if err != nil {
+		// If the child could not be restarted, cancel the above context
+		childCancel()
 		return nil, nil, nil, errors.Wrap(err, "could not restart child")
 	}
 

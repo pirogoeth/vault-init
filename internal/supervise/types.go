@@ -10,7 +10,7 @@ import (
 
 // Config holds the configuration for the supervisor
 type Config struct {
-	// command is the command including executable name/path and arguments
+	// Command is the command including executable name/path and arguments
 	// that should be spawned
 	Command []string
 

@@ -16,9 +16,9 @@ const (
 	FormatJSON = "json"
 )
 
-// ConfigureFormatter returns a configured logrus.Formatter based on
+// Configure returns a configured logrus.Formatter based on
 // the provided formatter name
-func ConfigureFormatter(useFormatter string) (log.Formatter, error) {
+func Configure(useFormatter string) (log.Formatter, error) {
 	var formatter log.Formatter
 
 	switch useFormatter {

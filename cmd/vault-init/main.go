@@ -9,6 +9,7 @@ import (
 	"github.com/alexflint/go-arg"
 	log "github.com/sirupsen/logrus"
 
+	"glow.dev.maio.me/seanj/vault-init/internal/logformatter"
 	"glow.dev.maio.me/seanj/vault-init/internal/supervise"
 	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
 )
@@ -32,6 +33,14 @@ func main() {
 	if *args.Debug {
 		log.SetLevel(log.TraceLevel)
 	}
+
+	formatter, err := logformatter.Configure(args.LogFormat)
+	if err != nil {
+		log.WithError(err).Fatalf("Error configuring log formatter")
+		os.Exit(1)
+	}
+
+	log.SetFormatter(formatter)
 
 	// Make a context for controlling goroutines
 	ctx, cancel := context.WithCancel(context.Background())
