@@ -9,7 +9,7 @@ import (
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"glow.dev.maio.me/seanj/vault-init/internal/template"
 )
@@ -43,7 +43,7 @@ func (vc *Client) Check() error {
 		return err
 	}
 
-	log.WithFields(log.Fields{
+	log.WithFields(logrus.Fields{
 		"initialized": health.Initialized,
 		"sealed":      health.Sealed,
 		"standby":     health.Standby,

@@ -5,7 +5,6 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 // NewEnvTemplate creates an EnvTemplate instance

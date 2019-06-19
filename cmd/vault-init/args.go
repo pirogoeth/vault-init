@@ -8,13 +8,12 @@ import (
 
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
 	defaultDebug             bool   = false
-    defaultDisableTokenRenew bool   = false
-    defaultLogFormat         string = "default"
+	defaultDisableTokenRenew bool   = false
+	defaultLogFormat         string = "default"
 	defaultNoInheritToken    bool   = false
 	defaultNoReaper          bool   = false
 	defaultOrphanToken       bool   = false
@@ -138,11 +137,11 @@ func (a *args) CheckAndSetDefaults() error {
 		if os.Getenv(vaultApi.EnvVaultToken) != a.VaultToken {
 			os.Setenv(vaultApi.EnvVaultToken, a.VaultToken)
 		}
-    }
-    
-    if a.LogFormat == "" {
-        a.LogFormat = defaultLogFormat
-    }
+	}
+
+	if a.LogFormat == "" {
+		a.LogFormat = defaultLogFormat
+	}
 
 	return nil
 }

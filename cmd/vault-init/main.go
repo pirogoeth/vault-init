@@ -7,12 +7,14 @@ import (
 	"os/signal"
 
 	"github.com/alexflint/go-arg"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"glow.dev.maio.me/seanj/vault-init/internal/logformatter"
 	"glow.dev.maio.me/seanj/vault-init/internal/supervise"
 	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
 )
+
+var log = logrus.WithField("stream", "main")
 
 func main() {
 	args := &args{}
@@ -26,12 +28,12 @@ func main() {
 
 	// Set log level according to verbosity
 	if *args.Verbose {
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	// Set trace if Debug is set
 	if *args.Debug {
-		log.SetLevel(log.TraceLevel)
+		logrus.SetLevel(logrus.TraceLevel)
 	}
 
 	formatter, err := logformatter.Configure(args.LogFormat)
@@ -40,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetFormatter(formatter)
+	logrus.SetFormatter(formatter)
 
 	// Make a context for controlling goroutines
 	ctx, cancel := context.WithCancel(context.Background())

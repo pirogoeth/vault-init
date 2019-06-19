@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	reaper "github.com/ramr/go-reaper"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // NewSupervisor creates a supervisor instance
@@ -60,7 +60,7 @@ func (s *Supervisor) Start(ctx context.Context, updateCh chan []string) error {
 				log.WithError(err).Errorf("Could not restart child")
 			}
 		case childState := <-s.stateCh:
-			log.WithFields(log.Fields{
+			log.WithFields(logrus.Fields{
 				"pid":        childState.Pid(),
 				"success":    childState.Success(),
 				"exitCode":   childState.ExitCode(),
@@ -104,7 +104,7 @@ func (s *Supervisor) spawnChild(ctx context.Context, environ []string) (*exec.Cm
 	fwd := newForwarder(stdoutPipe, stderrPipe)
 	fwd.Start(ctx)
 
-	log.WithFields(log.Fields{
+	log.WithFields(logrus.Fields{
 		"program": program,
 		"args":    s.config.Args(),
 	}).Debugf("Starting child")

@@ -7,7 +7,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func newSecret(client *Client, path string, apiSecret *vaultApi.Secret) *secret {

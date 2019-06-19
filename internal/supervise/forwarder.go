@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-linereader"
-	log "github.com/sirupsen/logrus"
 )
 
 // NewForwarder initializes a forwarder instance with the given pipe pair
