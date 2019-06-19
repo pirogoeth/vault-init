@@ -34,9 +34,10 @@ type Config struct {
 	// context from Vault.
 	Paths []string
 
-	// TokenRenew defines how frequently the child's Vault token should be
-	// renewed
-	TokenRenew time.Duration
+	// TokenPeriod sets the renewal period of the token. Setting this
+	// option will make the child token be a periodic token, which
+	// requires a root/sudo token
+	TokenPeriod string
 
 	// TokenTTL defaults the lifetime of the token
 	TokenTTL string

@@ -42,10 +42,25 @@ func (s *secret) Revoke() error {
 }
 
 func (s *secret) revokeLease() error {
+	if err := s.client.vaultClient.Sys().Revoke(s.LeaseID); err != nil {
+		return errors.Wrapf(err, "could not revoke lease by id: %s", s.LeaseID)
+	}
+
 	return nil
 }
 
 func (s *secret) revokeAuth() error {
+	tokenSys := s.client.vaultClient.Auth().Token()
+
+	accessor, err := s.TokenAccessor()
+	if err != nil {
+		return errors.Wrapf(err, "could not get token accessor for secret loaded from path: %s", s.Path)
+	}
+
+	if err := tokenSys.RevokeAccessor(accessor); err != nil {
+		return errors.Wrapf(err, "could not revoke token by accessor: %s: path %s", accessor, s.Path)
+	}
+
 	return nil
 }
 
@@ -90,12 +105,12 @@ func (s *secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
 		return false, errors.Errorf("could not get version from current secret's metadata")
 	}
 
-	currentVersionJson := currentVersionIface.(json.Number)
+	currentVersionJSON := currentVersionIface.(json.Number)
 	if !ok {
 		return false, errors.Errorf("could not type assert metadata.version as json.Number")
 	}
 
-	currentVersion, err := currentVersionJson.Int64()
+	currentVersion, err := currentVersionJSON.Int64()
 	if err != nil {
 		return false, errors.Errorf("could not convert metadata.version json.Number to int64")
 	}

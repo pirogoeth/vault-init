@@ -18,7 +18,7 @@ const (
 	defaultNoReaper          bool   = false
 	defaultOrphanToken       bool   = false
 	defaultRefreshDuration   string = "15s"
-	defaultTokenRenew        string = "15s"
+	defaultTokenPeriod       string = ""
 	defaultTokenTTL          string = ""
 	defaultVerbose           bool   = false
 )
@@ -35,12 +35,15 @@ type args struct {
 	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
 	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
 	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
-	TokenRenew        *time.Duration `arg:"--token-renewal,env:INIT_TOKEN_RENEWAL" help:"Period at which to renew the Vault token"`
-	TokenTTL          string         `arg:"--token-ttl,env:INIT_TOKEN_TTL" help:"TTL of the token, maximum suffix is hour"`
-	VaultAddress      string         `arg:"--vault-address,env:VAULT_ADDR" help:"Address to use to connect to Vault"`
-	VaultToken        string         `arg:"--vault-token,env:VAULT_TOKEN" help:"Token to use to authenticate to Vault"`
-	VaultTokenFile    string         `arg:"--vault-token-file,env:VAULT_TOKEN_FILE" help:"File containing token to use to authenticate to Vault"`
-	Verbose           *bool          `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
+
+	// TokenPeriod will cause the child token to be created as a periodic token:
+	// https://www.vaultproject.io/docs/concepts/tokens.html#periodic-tokens
+	TokenPeriod    string `arg:"--token-period,env:INIT_TOKEN_PERIOD" help:"Renewal period of the child token; creates a periodic token"`
+	TokenTTL       string `arg:"--token-ttl,env:INIT_TOKEN_TTL" help:"TTL of the token, maximum suffix is hour"`
+	VaultAddress   string `arg:"--vault-address,env:VAULT_ADDR" help:"Address to use to connect to Vault"`
+	VaultToken     string `arg:"--vault-token,env:VAULT_TOKEN" help:"Token to use to authenticate to Vault"`
+	VaultTokenFile string `arg:"--vault-token-file,env:VAULT_TOKEN_FILE" help:"File containing token to use to authenticate to Vault"`
+	Verbose        *bool  `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
 }
 
 func (args) Version() string {
@@ -75,14 +78,6 @@ func (a *args) CheckAndSetDefaults() error {
 		*a.NoReaper = defaultNoReaper
 	}
 
-	if a.TokenRenew == nil {
-		a.TokenRenew = new(time.Duration)
-		*a.TokenRenew, err = time.ParseDuration(defaultTokenRenew)
-		if err != nil {
-			return errors.Wrapf(err, "could not parse default token renewal duration: `%s`", defaultTokenRenew)
-		}
-	}
-
 	if a.RefreshDuration == nil {
 		a.RefreshDuration = new(time.Duration)
 		*a.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
@@ -91,8 +86,16 @@ func (a *args) CheckAndSetDefaults() error {
 		}
 	}
 
+	if a.TokenPeriod == "" {
+		a.TokenPeriod = defaultTokenPeriod
+	}
+
 	if a.TokenTTL == "" {
 		a.TokenTTL = defaultTokenTTL
+	}
+
+	if a.TokenPeriod != "" && a.TokenTTL != "" {
+		return errors.New("TokenTTL and TokenPeriod are mutually exclusive; only one may be set")
 	}
 
 	if a.Verbose == nil {

@@ -54,7 +54,7 @@ func main() {
 	vaultCfg.NoInheritToken = *args.NoInheritToken
 	vaultCfg.OrphanToken = *args.OrphanToken
 	vaultCfg.Paths = args.Paths
-	vaultCfg.TokenRenew = *args.TokenRenew
+	vaultCfg.TokenPeriod = args.TokenPeriod
 	vaultCfg.TokenTTL = args.TokenTTL
 
 	// Read common Vault client configuration variables from environment,

@@ -49,7 +49,7 @@ func (vc *Client) Check() error {
 		"standby":     health.Standby,
 		"version":     health.Version,
 		"serverTime":  health.ServerTimeUTC,
-	}).Debugf("Vault health status")
+	}).Debugf("Vault health seems ok")
 	return nil
 }
 
@@ -70,12 +70,25 @@ func (vc *Client) CreateChildToken(displayName string) (*secret, error) {
 
 	renewable := !vc.config.DisableTokenRenew
 
-	secret, err := creatorFn(&vaultApi.TokenCreateRequest{
+	createReq := &vaultApi.TokenCreateRequest{
 		NoParent:  noTokenParent,
 		Policies:  vc.config.AccessPolicies,
 		Renewable: &renewable,
-		TTL:       vc.config.TokenTTL,
-	})
+	}
+
+	if vc.config.TokenTTL != "" && vc.config.TokenPeriod != "" {
+		return nil, errors.New("TokenTTL and TokenPeriod are mutually exclusive; only one may be set")
+	}
+
+	if vc.config.TokenTTL != "" {
+		createReq.TTL = vc.config.TokenTTL
+	}
+
+	if vc.config.TokenPeriod != "" {
+		createReq.Period = vc.config.TokenPeriod
+	}
+
+	secret, err := creatorFn(createReq)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create child token")
 	}
