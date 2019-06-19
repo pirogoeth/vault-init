@@ -23,5 +23,6 @@ meta:
 
   tasks:
     golang-test: source/ci/tasks/golang/test.yml
+    golang-vet: source/ci/tasks/golang/vet.yml
     img-build: source/ci/tasks/img/build.yml
     img-build-nocache: source/ci/tasks/img/build-nocache.yml

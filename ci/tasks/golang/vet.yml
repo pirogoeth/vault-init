@@ -1,0 +1,18 @@
+---
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: golang
+    tag: latest
+
+params:
+  PACKAGE:
+
+inputs:
+- name: source
+
+run:
+  path: source/ci/tasks/golang/vet.sh

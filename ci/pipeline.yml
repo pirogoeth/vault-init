@@ -47,6 +47,15 @@ jobs:
     file: (( grab meta.tasks.golang-test ))
     params:
       PACKAGE: glow.dev.maio.me/seanj/vault-init
+- name: "go vet"
+  public: true
+  plan:
+  - get: source
+    trigger: true
+  - task: "vet code"
+    file: (( grab meta.tasks.golang-vet ))
+    params:
+      PACKAGE: glow.dev.maio.me/seanj/vault-init
 
 - name: "build vault-init:alpine"
   public: true
