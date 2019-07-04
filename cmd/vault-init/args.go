@@ -47,7 +47,7 @@ type args struct {
 }
 
 func (args) Version() string {
-	return "vault-init 0.1.0"
+	return "vault-init 0.2.0"
 }
 
 func (a *args) CheckAndSetDefaults() error {
