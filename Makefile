@@ -1,4 +1,4 @@
-.PHONY: build
+.PHONY: build test docker test/integration test/integration/clean
 
 build:
 	go build -o vault-init ./cmd/vault-init/...
@@ -24,6 +24,23 @@ test/integration: test/integration/clean build
 	vault secrets enable -path /totp totp
 	vault write totp/keys/Service generate=true issuer=Vault account_name=vault-init-test
 	vault kv put secret/shared session_key=pb5fgEOZwKHf09Zz373a835DteugBmte
+	env -i PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin \
+		SERVICE_VAULT_API_TOKEN="{{.Vault.token}}" \
+		KEY="{{.secret.data.shared.data.session_key}}" \
+		OTP="{{.totp.code.Service.code}}" \
+		./vault-init \
+			--debug \
+			--verbose \
+			--log-format json \
+			--vault-address "http://localhost:8200" \
+			--vault-token "secret" \
+			--without-reaper \
+			--orphan-token \
+			--one-shot \
+			--path /secret/data/shared \
+			--path /totp/code/Service \
+			--token-ttl 30s \
+			./test.sh
 	env -i PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin \
 		SERVICE_VAULT_API_TOKEN="{{.Vault.token}}" \
 		KEY="{{.secret.data.shared.data.session_key}}" \

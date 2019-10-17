@@ -36,6 +36,7 @@ func (s *Supervisor) Start(ctx context.Context, updateCh chan []string) error {
 
 	childCtx, childCancel := context.WithCancel(ctx)
 
+Watcher:
 	for {
 		select {
 		case envUpdate := <-updateCh:
@@ -60,6 +61,10 @@ func (s *Supervisor) Start(ctx context.Context, updateCh chan []string) error {
 				log.WithError(err).Errorf("Could not restart child")
 			}
 		case childState := <-s.stateCh:
+			if s.config.OneShot {
+				log.Debugf("Child process died; one-shot mode prevents restart!")
+				break Watcher
+			}
 			log.WithFields(logrus.Fields{
 				"pid":        childState.Pid(),
 				"success":    childState.Success(),
@@ -74,11 +79,13 @@ func (s *Supervisor) Start(ctx context.Context, updateCh chan []string) error {
 			}
 		case <-ctx.Done():
 			log.Infof("Supervisor received shutdown signal")
-
-			childCancel()
-			return s.haltAndWaitChild(child)
+			break Watcher
 		}
 	}
+
+	// Always cancel the child context and attempt to wait it
+	childCancel()
+	return s.haltAndWaitChild(child)
 }
 
 // spawnChild spawns the child process, returning a running exec.Cmd instance

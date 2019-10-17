@@ -16,6 +16,7 @@ const (
 	defaultLogFormat         string = "default"
 	defaultNoInheritToken    bool   = false
 	defaultNoReaper          bool   = false
+	defaultOneShot           bool   = false
 	defaultOrphanToken       bool   = false
 	defaultRefreshDuration   string = "15s"
 	defaultTokenPeriod       string = ""
@@ -32,6 +33,7 @@ type args struct {
 	LogFormat         string         `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
 	NoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
 	NoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
+	OneShot           *bool          `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
 	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
 	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
 	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
@@ -61,6 +63,11 @@ func (a *args) CheckAndSetDefaults() error {
 	if a.DisableTokenRenew == nil {
 		a.DisableTokenRenew = new(bool)
 		*a.DisableTokenRenew = defaultDisableTokenRenew
+	}
+
+	if a.OneShot == nil {
+		a.OneShot = new(bool)
+		*a.OneShot = defaultOneShot
 	}
 
 	if a.OrphanToken == nil {

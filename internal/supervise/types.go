@@ -17,6 +17,9 @@ type Config struct {
 	// DisableReaper tells the supervisor not to start the subprocess
 	// reaper for cases when vault-init is not running as pid 1
 	DisableReaper bool
+
+	// OneShot tells the supervisor not to restart the child after it exits
+	OneShot bool
 }
 
 // forwarder takes a stdout and stderr pipe from a child program

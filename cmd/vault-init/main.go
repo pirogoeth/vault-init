@@ -122,6 +122,7 @@ func main() {
 	supervisorCfg := &supervise.Config{
 		Command:       args.Command,
 		DisableReaper: *args.NoReaper,
+		OneShot:       *args.OneShot,
 	}
 
 	// Create the supervisor with the configuration
