@@ -1,4 +1,4 @@
-package main
+package initializer
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexflint/go-arg"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 )
@@ -24,7 +25,10 @@ const (
 	defaultVerbose           bool   = false
 )
 
-type args struct {
+// Config is the configuration for `vault-init` as a whole
+// and can be populated by an embedding application or populated
+// with arguments from the command line and/or environment variables.
+type Config struct {
 	Command []string `arg:"positional"`
 
 	AccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
@@ -48,83 +52,91 @@ type args struct {
 	Verbose        *bool  `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
 }
 
-func (args) Version() string {
-	return "vault-init 0.2.0"
+// NewConfig creates a new Config struct from the command line args
+// and environment variables.
+func NewConfig() *Config {
+	c := &Config{}
+	arg.MustParse(c)
+
+	return c
 }
 
-func (a *args) CheckAndSetDefaults() error {
+// ValidateAndSetDefaults validates the arguments set inside of the
+// configuration and fills in certain slots with defaults, if the values
+// are unset.
+func (c *Config) ValidateAndSetDefaults() error {
 	var err error
 
-	if a.Debug == nil {
-		a.Debug = new(bool)
-		*a.Debug = defaultDebug
+	if c.Debug == nil {
+		c.Debug = new(bool)
+		*c.Debug = defaultDebug
 	}
 
-	if a.DisableTokenRenew == nil {
-		a.DisableTokenRenew = new(bool)
-		*a.DisableTokenRenew = defaultDisableTokenRenew
+	if c.DisableTokenRenew == nil {
+		c.DisableTokenRenew = new(bool)
+		*c.DisableTokenRenew = defaultDisableTokenRenew
 	}
 
-	if a.OneShot == nil {
-		a.OneShot = new(bool)
-		*a.OneShot = defaultOneShot
+	if c.OneShot == nil {
+		c.OneShot = new(bool)
+		*c.OneShot = defaultOneShot
 	}
 
-	if a.OrphanToken == nil {
-		a.OrphanToken = new(bool)
-		*a.OrphanToken = defaultOrphanToken
+	if c.OrphanToken == nil {
+		c.OrphanToken = new(bool)
+		*c.OrphanToken = defaultOrphanToken
 	}
 
-	if a.NoInheritToken == nil {
-		a.NoInheritToken = new(bool)
-		*a.NoInheritToken = defaultNoInheritToken
+	if c.NoInheritToken == nil {
+		c.NoInheritToken = new(bool)
+		*c.NoInheritToken = defaultNoInheritToken
 	}
 
-	if a.NoReaper == nil {
-		a.NoReaper = new(bool)
-		*a.NoReaper = defaultNoReaper
+	if c.NoReaper == nil {
+		c.NoReaper = new(bool)
+		*c.NoReaper = defaultNoReaper
 	}
 
-	if a.RefreshDuration == nil {
-		a.RefreshDuration = new(time.Duration)
-		*a.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
+	if c.RefreshDuration == nil {
+		c.RefreshDuration = new(time.Duration)
+		*c.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
 		if err != nil {
 			return errors.Wrapf(err, "could not parse default secret refresh duration: `%s`", defaultRefreshDuration)
 		}
 	}
 
-	if a.TokenPeriod == "" {
-		a.TokenPeriod = defaultTokenPeriod
+	if c.TokenPeriod == "" {
+		c.TokenPeriod = defaultTokenPeriod
 	}
 
-	if a.TokenTTL == "" {
-		a.TokenTTL = defaultTokenTTL
+	if c.TokenTTL == "" {
+		c.TokenTTL = defaultTokenTTL
 	}
 
-	if a.TokenPeriod != "" && a.TokenTTL != "" {
-		return errors.New("TokenTTL and TokenPeriod are mutually exclusive; only one may be set")
+	if c.Verbose == nil {
+		c.Verbose = new(bool)
+		*c.Verbose = defaultVerbose
 	}
 
-	if a.Verbose == nil {
-		a.Verbose = new(bool)
-		*a.Verbose = defaultVerbose
-	}
-
-	if a.VaultAddress != "" {
-		if os.Getenv(vaultApi.EnvVaultAddress) != a.VaultAddress {
-			os.Setenv(vaultApi.EnvVaultAddress, a.VaultAddress)
+	if c.VaultAddress != "" {
+		if os.Getenv(vaultApi.EnvVaultAddress) != c.VaultAddress {
+			os.Setenv(vaultApi.EnvVaultAddress, c.VaultAddress)
 		}
 	}
 
-	if a.VaultToken == "" && a.VaultTokenFile == "" {
-		return fmt.Errorf("Both VaultToken and VaultTokenFile are unset")
-	} else if a.VaultToken != "" && a.VaultTokenFile != "" {
-		log.Warnf("Both VaultToken and VaultTokenFile are set, ignoring VaultTokenFile!")
-		a.VaultTokenFile = ""
+	if c.TokenPeriod != "" && c.TokenTTL != "" {
+		return errors.New("TokenTTL and TokenPeriod are mutually exclusive; only one may be set")
 	}
 
-	if a.VaultTokenFile != "" {
-		tokenFile, err := os.Open(a.VaultTokenFile)
+	if c.VaultToken == "" && c.VaultTokenFile == "" {
+		return fmt.Errorf("Both VaultToken and VaultTokenFile are unset")
+	} else if c.VaultToken != "" && c.VaultTokenFile != "" {
+		log.Warnf("Both VaultToken and VaultTokenFile are set, ignoring VaultTokenFile!")
+		c.VaultTokenFile = ""
+	}
+
+	if c.VaultTokenFile != "" {
+		tokenFile, err := os.Open(c.VaultTokenFile)
 		if err != nil {
 			return errors.Wrap(err, "could not open VaultTokenFile")
 		}
@@ -140,17 +152,17 @@ func (a *args) CheckAndSetDefaults() error {
 		tokenBuf := make([]byte, tokenFileSize)
 		tokenFile.Read(tokenBuf)
 
-		a.VaultToken = strings.TrimSpace(string(tokenBuf))
+		c.VaultToken = strings.TrimSpace(string(tokenBuf))
 	}
 
-	if a.VaultToken != "" {
-		if os.Getenv(vaultApi.EnvVaultToken) != a.VaultToken {
-			os.Setenv(vaultApi.EnvVaultToken, a.VaultToken)
+	if c.VaultToken != "" {
+		if os.Getenv(vaultApi.EnvVaultToken) != c.VaultToken {
+			os.Setenv(vaultApi.EnvVaultToken, c.VaultToken)
 		}
 	}
 
-	if a.LogFormat == "" {
-		a.LogFormat = defaultLogFormat
+	if c.LogFormat == "" {
+		c.LogFormat = defaultLogFormat
 	}
 
 	return nil

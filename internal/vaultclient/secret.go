@@ -99,18 +99,27 @@ func (s *secret) Update() (bool, error) {
 	return shouldUpdate, nil
 }
 
+func getVersionFromMetadata(metadata map[string]interface{}) (int64, error) {
+	versionIface, ok := metadata["version"]
+	if !ok {
+		return 0, errors.Errorf("could not get version from secret metadata: %#v", metadata)
+	}
+
+	versionJSON, ok := versionIface.(json.Number)
+	if !ok {
+		return 0, errors.Errorf("could not type assert metadata.version as json.Number")
+	}
+
+	version, err := versionJSON.Int64()
+	if err != nil {
+		return 0, errors.Wrapf(err, "could not convert metadata.version json.Number to int64")
+	}
+
+	return version, nil
+}
+
 func (s *secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
-	currentVersionIface, ok := metadata["version"]
-	if !ok {
-		return false, errors.Errorf("could not get version from current secret's metadata")
-	}
-
-	currentVersionJSON := currentVersionIface.(json.Number)
-	if !ok {
-		return false, errors.Errorf("could not type assert metadata.version as json.Number")
-	}
-
-	currentVersion, err := currentVersionJSON.Int64()
+	currentVersion, err := getVersionFromMetadata(metadata)
 	if err != nil {
 		return false, errors.Errorf("could not convert metadata.version json.Number to int64")
 	}
@@ -120,22 +129,9 @@ func (s *secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
 		return false, errors.Wrap(err, "could not fetch secret from Vault")
 	}
 
-	nextMetadata, ok := next.Data["metadata"].(map[string]interface{})
-	if !ok {
-		return false, errors.Errorf("could not read metadata from new secret")
-	}
-
-	nextVersionIface, ok := nextMetadata["version"]
-	if !ok {
-		return false, errors.Errorf("could not get version from next secret's metadata")
-	}
-
-	nextVersionStr, ok := nextVersionIface.(json.Number)
-	if !ok {
-		return false, errors.Errorf("could not type assert nextMetadata.version as json.Number")
-	}
-
-	nextVersion, err := nextVersionStr.Int64()
+	nextVersion, err := getVersionFromMetadata(
+		next.Data["metadata"].(map[string]interface{}),
+	)
 	if err != nil {
 		return false, errors.Errorf("could not convert nextMetadata.version json.Number to int")
 	}
