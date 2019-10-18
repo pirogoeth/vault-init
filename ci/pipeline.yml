@@ -1,6 +1,12 @@
 ---
 
 resources:
+- name: commons
+  type: git
+  icon: git
+  source:
+    .: (( inject meta.upstream.commons ))
+
 - name: source
   type: git
   icon: git
@@ -9,17 +15,19 @@ resources:
 
 - name: alpine
   type: registry-image
-  icon: docker
+  icon: pine-tree
   source:
-    repository: containers.dev.maio.me/library/alpine
-    tag: latest
+    repository: (( grab meta.upstream.alpine.repo ))
+    tag: (( grab meta.upstream.alpine.tag ))
+    .: (( inject meta.upstream.alpine.auth || {} ))
 
 - name: debian
   type: registry-image
   icon: docker
   source:
-    repository: debian
-    tag: 9-slim
+    repository: (( grab meta.upstream.debian.repo ))
+    tag: (( grab meta.upstream.debian.tag ))
+    .: (( inject meta.upstream.debian.auth || {} ))
 
 - name: vault-init-alpine
   type: registry-image
@@ -45,8 +53,6 @@ jobs:
     trigger: true
   - task: "run tests"
     file: (( grab meta.tasks.golang-test ))
-    params:
-      PACKAGE: glow.dev.maio.me/seanj/vault-init
 
 - name: "go vet"
   public: true
@@ -55,12 +61,11 @@ jobs:
     trigger: true
   - task: "vet code"
     file: (( grab meta.tasks.golang-vet ))
-    params:
-      PACKAGE: glow.dev.maio.me/seanj/vault-init
 
 - name: "build vault-init:alpine"
   public: true
   plan:
+  - get: commons
   - get: alpine
     trigger: true
   - get: source
@@ -68,20 +73,24 @@ jobs:
     passed:
     - "go test"
   - task: "build image"
-    file: (( grab meta.tasks.img-build ))
+    file: (( grab meta.tasks.img-build-oci ))
     privileged: true
     params:
-      REPOSITORY: (( grab meta.registry.image.repo ))
-      TAG: (( grab meta.registry.image.tag || "latest" ))
       CONTEXT: (( grab meta.registry.image.context ))
-      DOCKERFILE: (( concat meta.registry.image.context "Dockerfile" ))
+      DOCKERFILE: "Dockerfile"
+  - task: "write image tags"
+    file: (( grab meta.tasks.img-write-tags ))
+    params:
+      TAGS: (( grab meta.version ))
   - put: vault-init-alpine
     params:
       image: image/image.tar
+      additional_tags: metadata/additional_tags
 
 - name: "build vault-init:debian"
   public: true
   plan:
+  - get: commons
   - get: debian
     trigger: true
   - get: source
@@ -89,13 +98,16 @@ jobs:
     passed:
     - "go test"
   - task: "build image"
-    file: (( grab meta.tasks.img-build ))
+    file: (( grab meta.tasks.img-build-oci ))
     privileged: true
     params:
-      REPOSITORY: (( grab meta.registry.image.repo ))
-      TAG: (( concat "debian-" meta.registry.image.tag ))
       CONTEXT: (( grab meta.registry.image.context ))
-      DOCKERFILE: (( concat meta.registry.image.context "Dockerfile.debian" ))
+      DOCKERFILE: "Dockerfile.debian"
+  - task: "write image tags"
+    file: (( grab meta.tasks.img-write-tags ))
+    params:
+      TAGS: (( concat meta.version "-debian" ))
   - put: vault-init-debian
     params:
       image: image/image.tar
+      additional_tags: metadata/additional_tags
