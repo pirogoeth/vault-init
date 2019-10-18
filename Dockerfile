@@ -1,7 +1,9 @@
 FROM golang:alpine AS build
 
+WORKDIR /source
+ADD . /source/
 RUN apk add --no-cache git && \
-    go get -v glow.dev.maio.me/seanj/vault-init/cmd/vault-init
+    go install ./cmd/vault-init/...
 
 # ---
 FROM alpine:latest

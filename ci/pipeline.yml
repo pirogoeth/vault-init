@@ -47,6 +47,7 @@ jobs:
     file: (( grab meta.tasks.golang-test ))
     params:
       PACKAGE: glow.dev.maio.me/seanj/vault-init
+
 - name: "go vet"
   public: true
   plan:

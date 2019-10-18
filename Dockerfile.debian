@@ -1,6 +1,8 @@
 FROM golang:latest AS build
 
-RUN go get -v glow.dev.maio.me/seanj/vault-init/cmd/vault-init
+WORKDIR /source
+ADD . /source/
+RUN go install ./cmd/vault-init/...
 
 # ---
 FROM debian:latest
