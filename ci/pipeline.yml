@@ -19,7 +19,7 @@ resources:
   source:
     repository: (( grab meta.upstream.alpine.repo ))
     tag: (( grab meta.upstream.alpine.tag ))
-    .: (( inject meta.upstream.alpine.auth || {} ))
+    .: (( inject meta.upstream.alpine.auth ))
 
 - name: debian
   type: registry-image
@@ -27,7 +27,7 @@ resources:
   source:
     repository: (( grab meta.upstream.debian.repo ))
     tag: (( grab meta.upstream.debian.tag ))
-    .: (( inject meta.upstream.debian.auth || {} ))
+    .: (( inject meta.upstream.debian.auth ))
 
 - name: vault-init-alpine
   type: registry-image

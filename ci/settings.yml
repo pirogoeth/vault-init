@@ -37,6 +37,7 @@ meta:
     debian:
       repo: "debian"
       tag: "9-slim"
+      auth: {}
     commons:
       uri: "https://glow.dev.maio.me/containers/commons.git"
       branch: "master"
