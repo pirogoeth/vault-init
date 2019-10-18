@@ -75,6 +75,7 @@ jobs:
   - task: "build image"
     file: (( grab meta.tasks.img-build-oci ))
     privileged: true
+    input_mapping: {context: source}
     params:
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: "Dockerfile"
@@ -100,6 +101,7 @@ jobs:
   - task: "build image"
     file: (( grab meta.tasks.img-build-oci ))
     privileged: true
+    input_mapping: {context: source}
     params:
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: "Dockerfile.debian"
