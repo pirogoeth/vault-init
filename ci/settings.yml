@@ -13,7 +13,7 @@ meta:
       username: ((glow_registry_ci.username))
       password: ((glow_registry_ci.password))
     image:
-      context: source/
+      context: .
       repo: (( concat meta.registry.repository "/pirogoeth/vault-init" ))
       tag: latest
 
