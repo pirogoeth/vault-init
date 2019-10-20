@@ -4,9 +4,30 @@ import (
 	"context"
 	"io"
 	"os"
+	"os/exec"
 
 	"github.com/mitchellh/go-linereader"
 )
+
+// event is a container for dispatch of state during supervisor events
+type event struct {
+	child       *exec.Cmd
+	childCtx    context.Context
+	childCancel context.CancelFunc
+	parentCtx   context.Context
+}
+
+// forwarder takes a stdout and stderr pipe from a child program
+// and muxes them both into our logger
+type forwarder struct {
+	stdoutCh *linereader.Reader
+	stderrCh *linereader.Reader
+
+	outWriter io.Writer
+	errWriter io.Writer
+
+	cancel context.CancelFunc
+}
 
 // Config holds the configuration for the supervisor
 type Config struct {
@@ -20,18 +41,6 @@ type Config struct {
 
 	// OneShot tells the supervisor not to restart the child after it exits
 	OneShot bool
-}
-
-// forwarder takes a stdout and stderr pipe from a child program
-// and muxes them both into our logger
-type forwarder struct {
-	stdoutCh *linereader.Reader
-	stderrCh *linereader.Reader
-
-	outWriter io.Writer
-	errWriter io.Writer
-
-	cancel context.CancelFunc
 }
 
 // Supervisor is the actual supervisor instance, providing methods
