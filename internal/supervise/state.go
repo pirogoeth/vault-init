@@ -4,9 +4,9 @@ import (
 	"context"
 )
 
-func newEvent(parentCtx context.Context) *event {
+func newState(parentCtx context.Context) *state {
 	childCtx, childCancel := context.WithCancel(parentCtx)
-	return &event{
+	return &state{
 		child:       nil,
 		childCtx:    childCtx,
 		childCancel: childCancel,
@@ -17,10 +17,10 @@ func newEvent(parentCtx context.Context) *event {
 // replaceChild cancels the previous child's context, clears the `child`
 // field, and creates a new child context and cancel func. Returns the old
 // child.
-func (e *event) replaceChildContext() {
-	e.childCancel()
+func (s *state) replaceChildContext() {
+	s.childCancel()
 
-	newCtx, newCancel := context.WithCancel(e.parentCtx)
-	e.childCtx = newCtx
-	e.childCancel = newCancel
+	newCtx, newCancel := context.WithCancel(s.parentCtx)
+	s.childCtx = newCtx
+	s.childCancel = newCancel
 }

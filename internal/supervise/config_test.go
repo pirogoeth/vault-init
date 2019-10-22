@@ -9,7 +9,7 @@ func TestConfig(t *testing.T) {
 	expectStr := "/bin/ls -L /directory"
 
 	cfg := &Config{
-		Command: []string{"ls", "-L", "/directory"},
+		Command:       []string{"ls", "-L", "/directory"},
 		DisableReaper: false,
 	}
 

@@ -9,8 +9,8 @@ import (
 	"github.com/mitchellh/go-linereader"
 )
 
-// event is a container for dispatch of state during supervisor events
-type event struct {
+// state is a container for passing of state during supervisor events
+type state struct {
 	child       *exec.Cmd
 	childCtx    context.Context
 	childCancel context.CancelFunc

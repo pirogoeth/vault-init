@@ -34,18 +34,18 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 	var err error
 	var stop bool = false
 
-	evt := newEvent(parentCtx)
+	supState := newState(parentCtx)
 
 	for {
 		select {
 		case envUpdate := <-updateCh:
-			stop, err = s.handleEnvironmentUpdate(evt, envUpdate)
+			stop, err = s.handleEnvironmentUpdate(supState, envUpdate)
 			if err != nil {
 				log.WithError(err).Errorf("Error handling environment update")
 				return errors.Wrapf(err, "error while handling environment update")
 			}
 		case childState := <-s.stateCh:
-			stop, err = s.handleChildStateUpdate(evt, childState)
+			stop, err = s.handleChildStateUpdate(supState, childState)
 			if err != nil {
 				log.WithError(err).Errorf("Error handling state update")
 				return errors.Wrapf(err, "error while handling state update")
@@ -62,29 +62,29 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 	}
 
 	// Always cancel the child context and attempt to wait it
-	evt.childCancel()
-	return s.haltAndWaitChild(evt.child)
+	supState.childCancel()
+	return s.haltAndWaitChild(supState.child)
 }
 
 // handleEnvironmentUpdate accepts the `*event` structure and returns (stop bool, err error)
 // When an environment update occurs, try to gracefully terminate the previous child, if any,
 // and spawn a new child in its place.
-func (s *Supervisor) handleEnvironmentUpdate(evt *event, envUpdate []string) (bool, error) {
+func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string) (bool, error) {
 	s.lastEnv = envUpdate
 
-	if evt.child == nil {
+	if supState.child == nil {
 		log.Infof("Received initial environment update, spawning the child!")
 		log.Debugf("<- envUpdate: %#v", envUpdate)
 
 		// Perform the initial child spawn
-		if err := s.spawnChild(evt, envUpdate); err != nil {
+		if err := s.spawnChild(supState, envUpdate); err != nil {
 			log.WithError(err).Errorf("Could not spawn child")
 			return true, errors.Wrapf(err, "error spawning child")
 		}
 	}
 
 	log.Debugf("Got an environment update, restarting the child! %#v\n", envUpdate)
-	if err := s.restartChild(evt, envUpdate); err != nil {
+	if err := s.restartChild(supState, envUpdate); err != nil {
 		log.WithError(err).Errorf("Could not restart child")
 		return true, errors.Wrapf(err, "error restarting child")
 	}
@@ -92,7 +92,7 @@ func (s *Supervisor) handleEnvironmentUpdate(evt *event, envUpdate []string) (bo
 	return false, nil
 }
 
-func (s *Supervisor) handleChildStateUpdate(evt *event, childState *os.ProcessState) (bool, error) {
+func (s *Supervisor) handleChildStateUpdate(supState *state, childState *os.ProcessState) (bool, error) {
 	if s.config.OneShot {
 		log.Debugf("Child process died; one-shot mode prevents restart!")
 		return true, nil
@@ -106,7 +106,7 @@ func (s *Supervisor) handleChildStateUpdate(evt *event, childState *os.ProcessSt
 		"userTime":   childState.UserTime(),
 	}).Debugf("Child process died; restarting")
 
-	if err := s.restartChild(evt, s.lastEnv); err != nil {
+	if err := s.restartChild(supState, s.lastEnv); err != nil {
 		log.WithError(err).Errorf("Could not restart child")
 		return true, errors.Wrapf(err, "error restarting child")
 	}
@@ -116,13 +116,13 @@ func (s *Supervisor) handleChildStateUpdate(evt *event, childState *os.ProcessSt
 
 // spawnChild spawns the child process, writing the new exec.Cmd instance into the `*event` structure
 // ctx context.Context -> evt.childCtx
-func (s *Supervisor) spawnChild(evt *event, environ []string) error {
+func (s *Supervisor) spawnChild(supState *state, environ []string) error {
 	program, err := s.config.Program()
 	if err != nil {
 		return errors.Wrap(err, "could not determine path to child executable")
 	}
 
-	child := exec.CommandContext(evt.childCtx, program, s.config.Args()...)
+	child := exec.CommandContext(supState.childCtx, program, s.config.Args()...)
 	child.Env = environ
 
 	stdoutPipe, err := child.StdoutPipe()
@@ -136,7 +136,7 @@ func (s *Supervisor) spawnChild(evt *event, environ []string) error {
 	}
 
 	fwd := newForwarder(stdoutPipe, stderrPipe)
-	fwd.Start(evt.childCtx)
+	fwd.Start(supState.childCtx)
 
 	log.WithFields(logrus.Fields{
 		"program": program,
@@ -147,21 +147,21 @@ func (s *Supervisor) spawnChild(evt *event, environ []string) error {
 	}
 
 	log.WithField("pid", child.Process.Pid).Debugf("Child started!")
-	evt.child = child
+	supState.child = child
 
-	go s.waitChild(evt.childCtx, child)
+	go s.waitChild(supState.childCtx, child)
 
 	return nil
 }
 
-func (s *Supervisor) restartChild(evt *event, environ []string) error {
+func (s *Supervisor) restartChild(supState *state, environ []string) error {
 	// When restarting the child, the previous child context needs to be
 	// cancelled and a new one needs to be created
-	evt.replaceChildContext()
+	supState.replaceChildContext()
 
-	if err := s.spawnChild(evt, environ); err != nil {
+	if err := s.spawnChild(supState, environ); err != nil {
 		// If the child could not be restarted, cancel the above context
-		evt.childCancel()
+		supState.childCancel()
 		return errors.Wrap(err, "could not restart child")
 	}
 
