@@ -3,14 +3,20 @@ package initializer
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
 	"glow.dev.maio.me/seanj/vault-init/internal/logformatter"
+	"glow.dev.maio.me/seanj/vault-init/internal/secret"
 	"glow.dev.maio.me/seanj/vault-init/internal/supervise"
 	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/dummy"
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/real"
 )
 
 func Run(ctx context.Context, config *Config) error {
@@ -58,6 +64,7 @@ func Run(ctx context.Context, config *Config) error {
 	if err != nil {
 		log.WithError(err).Fatalf("Could not create child token")
 	}
+	childSecret = secret.WrapChildToken(vaultClient, childSecret)
 
 	// Extract the secret and accessor
 	accessor, err := childSecret.TokenAccessor()
@@ -77,7 +84,7 @@ func Run(ctx context.Context, config *Config) error {
 	}
 
 	// Overwrite the VAULT_TOKEN environment variable with the child token
-	// to prevent leaking the parent to the child process
+	// to prevent leaking the parent token to the child process
 	os.Setenv("VAULT_TOKEN", secret)
 
 	// Start the child token renewer
@@ -106,6 +113,18 @@ func Run(ctx context.Context, config *Config) error {
 	// Create the supervisor with the configuration
 	supervisor := supervise.NewSupervisor(supervisorCfg)
 
+	// If a telemetry address is provided, start the telemetry server and
+	// the additional collectors, if configured.
+	if config.TelemetryAddress != "" {
+		go startTelemetryServer(
+			config.TelemetryAddress,
+			*config.TelemetryCollectorGolang,
+			*config.TelemetryCollectorProcess,
+		)
+	}
+
+	// When waitForSignal receives a signal, it cancels the root-level
+	// context, causing the entire system to shut down.
 	go waitForSignal(ctx, cancel)
 
 	// Launch the supervisor
@@ -138,5 +157,30 @@ func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
 			cancel()
 			return
 		}
+	}
+}
+
+func startTelemetryServer(telemetryAddress string, useGolangCollector, useProcessCollector bool) {
+	if useGolangCollector {
+		collector := prometheus.NewGoCollector()
+		prometheus.MustRegister(collector)
+	}
+
+	if useProcessCollector {
+		collector := prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{
+			Namespace: "vault_init",
+		})
+		prometheus.MustRegister(collector)
+	}
+
+	log.Error(http.ListenAndServe(telemetryAddress, promhttp.Handler()))
+}
+
+func buildVaultClient(config *vaultclient.Config) vaultclient.VaultClient {
+	switch os.Getenv("VAULT_CLIENT_TYPE") {
+	case "dummy":
+		return dummy.NewClient(config)
+	default:
+		return real.NewClient(config)
 	}
 }

@@ -12,17 +12,19 @@ import (
 )
 
 const (
-	defaultDebug             bool   = false
-	defaultDisableTokenRenew bool   = false
-	defaultLogFormat         string = "default"
-	defaultNoInheritToken    bool   = false
-	defaultNoReaper          bool   = false
-	defaultOneShot           bool   = false
-	defaultOrphanToken       bool   = false
-	defaultRefreshDuration   string = "15s"
-	defaultTokenPeriod       string = ""
-	defaultTokenTTL          string = ""
-	defaultVerbose           bool   = false
+	defaultDebug                     bool   = false
+	defaultDisableTokenRenew         bool   = false
+	defaultLogFormat                 string = "default"
+	defaultNoInheritToken            bool   = false
+	defaultNoReaper                  bool   = false
+	defaultOneShot                   bool   = false
+	defaultOrphanToken               bool   = false
+	defaultRefreshDuration           string = "15s"
+	defaultTelemetryCollectorGolang  bool   = false
+	defaultTelemetryCollectorProcess bool   = false
+	defaultTokenPeriod               string = ""
+	defaultTokenTTL                  string = ""
+	defaultVerbose                   bool   = false
 )
 
 // Config is the configuration for `vault-init` as a whole
@@ -50,6 +52,10 @@ type Config struct {
 	VaultToken     string `arg:"--vault-token,env:VAULT_TOKEN" help:"Token to use to authenticate to Vault"`
 	VaultTokenFile string `arg:"--vault-token-file,env:VAULT_TOKEN_FILE" help:"File containing token to use to authenticate to Vault"`
 	Verbose        *bool  `arg:"-v,--verbose,env:INIT_VERBOSE" help:"Enable verbose debug logging"`
+
+	TelemetryAddress          string `arg:"--telemetry-address,env:INIT_TELEMETRY_ADDR" help:"Address to expose Prometheus telemetry on. Disabled if blank."`
+	TelemetryCollectorGolang  *bool  `arg:"--use-go-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_GOLANG" help:"Whether the Golang telemetry collector should be started."`
+	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
 }
 
 // NewConfig creates a new Config struct from the command line args
@@ -163,6 +169,16 @@ func (c *Config) ValidateAndSetDefaults() error {
 
 	if c.LogFormat == "" {
 		c.LogFormat = defaultLogFormat
+	}
+
+	if c.TelemetryCollectorGolang == nil {
+		c.TelemetryCollectorGolang = new(bool)
+		*c.TelemetryCollectorGolang = defaultTelemetryCollectorGolang
+	}
+
+	if c.TelemetryCollectorProcess == nil {
+		c.TelemetryCollectorProcess = new(bool)
+		*c.TelemetryCollectorProcess = defaultTelemetryCollectorProcess
 	}
 
 	return nil

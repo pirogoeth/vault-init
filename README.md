@@ -1,5 +1,7 @@
 # `vault-init`
 
+![build status](https://concourse.dev.maio.me/api/v1/teams/main/pipelines/vault-init/badge)
+
 ## Rationale
 
 Previously, I could use Nomad's templating to insert data from Vault into an application.

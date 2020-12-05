@@ -1,9 +1,11 @@
 package vaultclient
 
 import (
+	"context"
 	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
+	"glow.dev.maio.me/seanj/vault-init/internal/secret"
 )
 
 // TokenCreatorFunc is a function that returns a token that can be used by
@@ -43,28 +45,29 @@ type Config struct {
 	TokenTTL string
 }
 
-// Client is a wrapper around the Vault API client
-type Client struct {
-	config        *Config
-	vaultClient   *vaultApi.Client
-	tokenRenewer  *vaultApi.Renewer
-	secretWatcher *watcher
-}
-
-type watcher struct {
-	client          *Client
-	refreshDuration time.Duration
-}
-
-type secret struct {
-	*vaultApi.Secret
-
-	// client is a reference to the vaultclient.Client
-	client *Client
-
-	// renewer is a reference to the running vaultApi.Renewer
-	renewer *vaultApi.Renewer
-
-	// Path is the logical path at which this secret was found
-	Path string
+// VaultClient is an interface defining the functions required to be
+// implemented to handle tokens
+type VaultClient interface {
+	// Check checks the Vault client's connection and authentication information.
+	Check() error
+	// CreateChildToken creates a token that is a child of the token that the client is connecting with.
+	// This token is provided to the application that is running underneath vault-init, that way the token
+	// used by vault-init itself is never exposed to the managed application.
+	CreateChildToken(displayName string) (*vaultApi.Secret, error)
+	// FetchSecrets fetches all of the secrets defined in the configuration.
+	FetchSecrets() (*[]secret.Secret, error)
+	// NewLeaseRenewer creates a goroutine that constantly renews the secret lease that is configured
+	// in the *vaultApi.RenewerInput.
+	NewLeaseRenewer(input *vaultApi.RenewerInput) (*vaultApi.Renewer, error)
+	// RevokeTokenAccessor takes a token's accessor and revokes it.
+	RevokeTokenAccessor(accessor string) error
+	// RevokeLease takes a lease ID and revokes it.
+	RevokeLease(leaseID string) error
+	// ReadLogical reads the secret at a given logical path inside of Vault.
+	ReadLogical(path string) (*vaultApi.Secret, error)
+	// SetToken sets the token that should be used to authenticate to Vault.
+	SetToken(v string) error
+	// StartWatcher starts the client's secret watcher. The resulting string channel will receive
+	// a string array of rendered environment variables when updates happen.
+	StartWatcher(ctx context.Context, refreshDuration time.Duration) (chan []string, error)
 }

@@ -1,4 +1,4 @@
-package vaultclient
+package watcher
 
 import (
 	"context"
@@ -6,21 +6,31 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"glow.dev.maio.me/seanj/vault-init/internal/secret"
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
 )
 
-func newWatcher(client *Client, refreshDuration time.Duration) (*watcher, error) {
-	return &watcher{
+// Watcher watches the Client's secrets for updates and sends updated values
+// to the supervisor.
+type Watcher struct {
+	client          vaultclient.VaultClient
+	refreshDuration time.Duration
+}
+
+func NewWatcher(client vaultclient.VaultClient, refreshDuration time.Duration) (*Watcher, error) {
+	return &Watcher{
 		client:          client,
 		refreshDuration: refreshDuration,
 	}, nil
 }
 
-func (w *watcher) Watch(ctx context.Context, updateCh chan []string) {
+// Watch watches the secrets held in Client, sending updates through the update channel
+func (w *Watcher) Watch(ctx context.Context, updateCh chan []string) {
 	log.Infof("Watching secrets for updates every %s", w.refreshDuration.String())
 
 	// Do the initial fetch and send it as an initial update to
 	// the supervisor
-	secrets, err := w.client.fetchSecrets()
+	secrets, err := w.client.FetchSecrets()
 	if err != nil {
 		log.WithError(err).Fatalf("Could not collect secrets while starting watcher")
 	}
@@ -52,7 +62,7 @@ func (w *watcher) Watch(ctx context.Context, updateCh chan []string) {
 
 // checkSecrets iterates over all known secrets. _Only_ non-renewable
 // secrets need to be monitored.
-func (w *watcher) checkSecrets(secrets []*secret) (bool, error) {
+func (w *Watcher) checkSecrets(secrets []*secret.Secret) (bool, error) {
 	log.Debugf("Checking secret versions")
 
 	updated := false
@@ -84,7 +94,7 @@ func (w *watcher) checkSecrets(secrets []*secret) (bool, error) {
 
 // sendSecrets serializes all known secrets into environment templates
 // and sends them as an update to the supervisor
-func (w *watcher) sendSecrets(updateCh chan []string, secrets []*secret) error {
+func (w *Watcher) sendSecrets(updateCh chan []string, secrets []*secret.Secret) error {
 	environ, err := w.client.secretsIntoEnviron(secrets)
 	if err != nil {
 		return errors.Wrap(err, "could not convert secrets into environment map")

@@ -20,6 +20,7 @@ func NewEnvTemplate(envKey, envValue string) (*EnvTemplate, error) {
 		value:    envValue,
 		template: tpl,
 	}
+	envTpl.template = envTpl.template.Funcs(makeFuncMap())
 
 	return envTpl, nil
 }

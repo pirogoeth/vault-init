@@ -1,4 +1,4 @@
-package vaultclient
+package real
 
 import (
 	"context"
@@ -11,8 +11,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"glow.dev.maio.me/seanj/vault-init/internal/secret"
 	"glow.dev.maio.me/seanj/vault-init/internal/template"
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"glow.dev.maio.me/seanj/vault-init/internal/watcher"
 )
+
+var _ vaultclient.VaultClient = (*Client)(nil)
 
 // NewClient creates a new Vault API client wrapper
 func NewClient(config *Config) (*Client, error) {
@@ -55,7 +60,7 @@ func (vc *Client) Check() error {
 
 // CreateChildToken creates a token that can be used by the spawned
 // child
-func (vc *Client) CreateChildToken(displayName string) (*secret, error) {
+func (vc *Client) CreateChildToken(displayName string) (*vaultApi.Secret, error) {
 	tokenAuth := vc.vaultClient.Auth().Token()
 	var creatorFn TokenCreatorFunc
 	var noTokenParent bool
@@ -88,12 +93,12 @@ func (vc *Client) CreateChildToken(displayName string) (*secret, error) {
 		createReq.Period = vc.config.TokenPeriod
 	}
 
-	secret, err := creatorFn(createReq)
+	sec, err := creatorFn(createReq)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create child token")
 	}
 
-	return newSecret(vc, "CHILD_TOKEN", secret), nil
+	return sec, nil
 }
 
 // SetToken sets the underlying Vault authentication token. Performs a
@@ -108,22 +113,22 @@ func (vc *Client) SetToken(v string) error {
 	return nil
 }
 
-func (vc *Client) fetchSecrets() ([]*secret, error) {
+func (vc *Client) FetchSecrets() ([]*secret.Secret, error) {
 	logical := vc.vaultClient.Logical()
 
-	secrets := make([]*secret, 0)
+	secrets := make([]*secret.Secret, 0)
 	for _, path := range vc.config.Paths {
-		secret, err := logical.Read(path)
+		sec, err := logical.Read(path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not get secret at path: %s", path)
 		}
 
-		if secret == nil {
+		if sec == nil {
 			log.Warnf("secret at %s is nil, skipping", path)
 			continue
 		}
 
-		secrets = append(secrets, newSecret(vc, path, secret))
+		secrets = append(secrets, secret.NewSecret(vc, path, sec))
 	}
 
 	return secrets, nil
@@ -131,7 +136,7 @@ func (vc *Client) fetchSecrets() ([]*secret, error) {
 
 // intoEnviron templates a set of secret data into a map[string]string to use
 // as environment variables to the child program
-func (vc *Client) secretsIntoEnviron(secrets []*secret) (map[string]string, error) {
+func (vc *Client) secretsIntoEnviron(secrets []*secret.Secret) (map[string]string, error) {
 	secretCtx, err := vc.secretsAsMap(secrets)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create map from secrets")
@@ -176,7 +181,7 @@ func (vc *Client) keyIsFiltered(key string) bool {
 
 // secretsAsMap merges a bundle of secrets into a single map[string]interface{}
 // to be consumed by secretsIntoEnviron.
-func (vc *Client) secretsAsMap(secrets []*secret) (map[string]interface{}, error) {
+func (vc *Client) secretsAsMap(secrets []*secret.Secret) (map[string]interface{}, error) {
 	data := make(map[string]interface{}, 0)
 
 	for _, secret := range secrets {
@@ -239,7 +244,7 @@ func (vc *Client) StartWatcher(ctx context.Context, refreshDuration time.Duratio
 	updateCh := make(chan []string, 1)
 
 	// Launch the watcher goroutine
-	watcher, err := newWatcher(vc, refreshDuration)
+	watcher, err := watcher.NewWatcher(vc, refreshDuration)
 	if err != nil {
 		return nil, errors.Wrap(err, "while creating watcher")
 	}

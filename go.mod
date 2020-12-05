@@ -8,8 +8,8 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.7
 	github.com/mitchellh/go-linereader v0.0.0-20190213213312-1b945b3263eb
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.8.0
 	github.com/ramr/go-reaper v0.0.0-20170814234526-35f6a64e44ff
-	github.com/sirupsen/logrus v1.4.2
-	gopkg.in/yaml.v2 v2.2.2 // indirect
+	github.com/sirupsen/logrus v1.6.0
 )

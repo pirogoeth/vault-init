@@ -1,4 +1,4 @@
-package vaultclient
+package secret
 
 import (
 	"encoding/json"
@@ -7,21 +7,45 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
+
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
 )
 
-func newSecret(client *Client, path string, apiSecret *vaultApi.Secret) *secret {
-	log.Tracef(spew.Sprintf("creating new secret with data: %#v", apiSecret.Data))
-	return &secret{
+// Secret wraps the contents of a Secret from the Vault API
+type Secret struct {
+	*vaultApi.Secret
+
+	// client is a reference to the vaultclient.Client
+	client vaultclient.VaultClient
+
+	// renewer is a reference to the running vaultApi.Renewer
+	renewer *vaultApi.Renewer
+
+	// Path is the logical path at which this secret was found
+	Path string
+}
+
+// WrapChildToken wraps a special-case token that is injected into the child program.
+func WrapChildToken(client vaultclient.VaultClient, secret *vaultApi.Secret) *Secret {
+	return NewSecret(client, "CHILD_TOKEN", secret)
+}
+
+// NewSecret creates an instance of a Secret wrapped from the Vault API
+func NewSecret(client vaultclient.VaultClient, path string, secret *vaultApi.Secret) *Secret {
+	log.Tracef(spew.Sprintf("creating new secret with data: %#v", secret.Data))
+	return &Secret{
 		client: client,
 		Path:   path,
-		Secret: apiSecret,
+		Secret: secret,
 	}
 }
 
 // Fetch retrieves a new copy of the token, storing it in this secret
-func (s *secret) Fetch() (*secret, error) {
-	logical := s.client.vaultClient.Logical()
-	secret, err := logical.Read(s.Path)
+func (s *Secret) Fetch() (*Secret, error) {
+	// xxx - refactoring
+	// logical := s.client.vaultClient.Logical()
+	// secret, err := logical.Read(s.Path)
+	secret, err := s.client.ReadLogical(s.Path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get secret at path: %s", s.Path)
 	}
@@ -30,7 +54,8 @@ func (s *secret) Fetch() (*secret, error) {
 	return s, nil
 }
 
-func (s *secret) Revoke() error {
+// Revoke revokes the underlying secret that was retrieved from Vault.
+func (s *Secret) Revoke() error {
 	if s.Auth != nil {
 		return s.revokeAuth()
 	} else if s.LeaseID != "" {
@@ -41,30 +66,34 @@ func (s *secret) Revoke() error {
 	return nil
 }
 
-func (s *secret) revokeLease() error {
-	if err := s.client.vaultClient.Sys().Revoke(s.LeaseID); err != nil {
+func (s *Secret) revokeLease() error {
+	// xxx - refactoring
+	// if err := s.client.vaultClient.Sys().Revoke(s.LeaseID); err != nil {
+	if err := s.client.RevokeLease(s.LeaseID); err != nil {
 		return errors.Wrapf(err, "could not revoke lease by id: %s", s.LeaseID)
 	}
 
 	return nil
 }
 
-func (s *secret) revokeAuth() error {
-	tokenSys := s.client.vaultClient.Auth().Token()
-
+func (s *Secret) revokeAuth() error {
 	accessor, err := s.TokenAccessor()
 	if err != nil {
 		return errors.Wrapf(err, "could not get token accessor for secret loaded from path: %s", s.Path)
 	}
 
-	if err := tokenSys.RevokeAccessor(accessor); err != nil {
+	// xxx - refactoring
+	// tokenSys := s.client.vaultClient.Auth().Token()
+	// if err := tokenSys.RevokeAccessor(accessor); err != nil {
+	if err := s.client.RevokeTokenAccessor(accessor); err != nil {
 		return errors.Wrapf(err, "could not revoke token by accessor: %s: path %s", accessor, s.Path)
 	}
 
 	return nil
 }
 
-func (s *secret) IsRenewable() (bool, error) {
+// IsRenewable detemines if the secret is renewable.
+func (s *Secret) IsRenewable() (bool, error) {
 	var authRenewable bool
 	var leaseRenewable bool
 
@@ -84,7 +113,7 @@ func (s *secret) IsRenewable() (bool, error) {
 
 // Update fetches the secret from the backend and compares it to the
 // current secret. Returns whether or not the secret has changed.
-func (s *secret) Update() (bool, error) {
+func (s *Secret) Update() (bool, error) {
 	var shouldUpdate = false
 	var err error
 
@@ -118,7 +147,7 @@ func getVersionFromMetadata(metadata map[string]interface{}) (int64, error) {
 	return version, nil
 }
 
-func (s *secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
+func (s *Secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
 	currentVersion, err := getVersionFromMetadata(metadata)
 	if err != nil {
 		return false, errors.Errorf("could not convert metadata.version json.Number to int64")
@@ -139,7 +168,8 @@ func (s *secret) metadataUpdate(metadata map[string]interface{}) (bool, error) {
 	return currentVersion < nextVersion, nil
 }
 
-func (s *secret) StartRenewer() error {
+// StartRenewer starts a goroutine that renews the underlying secret.
+func (s *Secret) StartRenewer() error {
 	renewable, err := s.IsRenewable()
 	if err != nil {
 		return errors.Wrap(err, "could not check if secret is renewable")
@@ -150,7 +180,11 @@ func (s *secret) StartRenewer() error {
 		return nil
 	}
 
-	renewer, err := s.client.vaultClient.NewRenewer(&vaultApi.RenewerInput{
+	// xxx - refactoring
+	// renewer, err := s.client.vaultClient.NewRenewer(&vaultApi.RenewerInput{
+	// 	Secret: s.Secret,
+	// })
+	renewer, err := s.client.NewLeaseRenewer(&vaultApi.RenewerInput{
 		Secret: s.Secret,
 	})
 	if err != nil {
@@ -164,11 +198,12 @@ func (s *secret) StartRenewer() error {
 	return nil
 }
 
-func (s *secret) StopRenewer() {
+// StopRenewer stops the renewer attached to this secret.
+func (s *Secret) StopRenewer() {
 	s.renewer.Stop()
 }
 
-func (s *secret) dataMap() map[string]interface{} {
+func (s *Secret) dataMap() map[string]interface{} {
 	data := s.Data
 	pathComponents := strings.Split(s.Path, "/")
 	for idx := range pathComponents {
@@ -190,7 +225,7 @@ func (s *secret) dataMap() map[string]interface{} {
 	return data
 }
 
-func (s *secret) watchRenewer(renewer *vaultApi.Renewer) {
+func (s *Secret) watchRenewer(renewer *vaultApi.Renewer) {
 	log.Debugf("Watching renewer for secret `%s`", s.Path)
 
 	for {

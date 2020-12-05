@@ -13,5 +13,3 @@ services:
     - "8200:8200"
     cap_add:
     - IPC_LOCK
-    volumes:
-    - "vault-data:/vault/file"
