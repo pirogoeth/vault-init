@@ -1,10 +1,15 @@
 package real
 
-import "glow.dev.maio.me/seanj/vault-init/internal/watcher"
+import (
+	vaultApi "github.com/hashicorp/vault/api"
+
+	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"glow.dev.maio.me/seanj/vault-init/internal/watcher"
+)
 
 // Client is a wrapper around the Vault API client
 type Client struct {
-	config        *Config
+	config        *vaultclient.Config
 	vaultClient   *vaultApi.Client
 	tokenRenewer  *vaultApi.Renewer
 	secretWatcher *watcher.Watcher

@@ -74,13 +74,15 @@ func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string
 
 	if supState.child == nil {
 		log.Infof("Received initial environment update, spawning the child!")
-		log.Debugf("<- envUpdate: %#v", envUpdate)
+		log.Debugf("envUpdate: %#v", envUpdate)
 
 		// Perform the initial child spawn
 		if err := s.spawnChild(supState, envUpdate); err != nil {
 			log.WithError(err).Errorf("Could not spawn child")
 			return true, errors.Wrapf(err, "error spawning child")
 		}
+
+		return false, nil
 	}
 
 	log.Debugf("Got an environment update, restarting the child! %#v\n", envUpdate)

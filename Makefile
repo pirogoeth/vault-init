@@ -1,3 +1,4 @@
+SHELL := $(shell which bash)
 .PHONY: build cross docker test test/integration test/integration/clean
 
 build:

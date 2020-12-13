@@ -1,26 +1,16 @@
 package real
 
 import (
-	"context"
 	"os"
-	"strings"
-	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
-	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/template"
 	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
-	"glow.dev.maio.me/seanj/vault-init/internal/watcher"
 )
 
-var _ vaultclient.VaultClient = (*Client)(nil)
-
 // NewClient creates a new Vault API client wrapper
-func NewClient(config *Config) (*Client, error) {
+func NewClient(config *vaultclient.Config) (vaultclient.VaultClient, error) {
 	log.WithField("config", config).Debugf("initializing Vault API client")
 
 	vaultClient, err := vaultApi.NewClient(config.Config)
@@ -32,171 +22,6 @@ func NewClient(config *Config) (*Client, error) {
 		vaultClient: vaultClient,
 		config:      config,
 	}, nil
-}
-
-// Check performs a healthcheck on the Vault server
-func (vc *Client) Check() error {
-	sysClient := vc.vaultClient.Sys()
-	health, err := sysClient.Health()
-	if err != nil {
-		return errors.Wrap(err, "could not get Vault health")
-	}
-
-	if !health.Initialized || health.Sealed || health.Standby {
-		err := errors.Errorf("Vault is not healthy: %v", health)
-		log.WithError(err).Errorf("Health check failed")
-		return err
-	}
-
-	log.WithFields(logrus.Fields{
-		"initialized": health.Initialized,
-		"sealed":      health.Sealed,
-		"standby":     health.Standby,
-		"version":     health.Version,
-		"serverTime":  health.ServerTimeUTC,
-	}).Debugf("Vault health seems ok")
-	return nil
-}
-
-// CreateChildToken creates a token that can be used by the spawned
-// child
-func (vc *Client) CreateChildToken(displayName string) (*vaultApi.Secret, error) {
-	tokenAuth := vc.vaultClient.Auth().Token()
-	var creatorFn TokenCreatorFunc
-	var noTokenParent bool
-
-	if vc.config.OrphanToken {
-		creatorFn = tokenAuth.CreateOrphan
-		noTokenParent = true
-	} else {
-		creatorFn = tokenAuth.Create
-		noTokenParent = false
-	}
-
-	renewable := !vc.config.DisableTokenRenew
-
-	createReq := &vaultApi.TokenCreateRequest{
-		NoParent:  noTokenParent,
-		Policies:  vc.config.AccessPolicies,
-		Renewable: &renewable,
-	}
-
-	if vc.config.TokenTTL != "" && vc.config.TokenPeriod != "" {
-		return nil, errors.New("TokenTTL and TokenPeriod are mutually exclusive; only one may be set")
-	}
-
-	if vc.config.TokenTTL != "" {
-		createReq.TTL = vc.config.TokenTTL
-	}
-
-	if vc.config.TokenPeriod != "" {
-		createReq.Period = vc.config.TokenPeriod
-	}
-
-	sec, err := creatorFn(createReq)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create child token")
-	}
-
-	return sec, nil
-}
-
-// SetToken sets the underlying Vault authentication token. Performs a
-// `Check()` call to validate authentication.
-func (vc *Client) SetToken(v string) error {
-	vc.vaultClient.SetToken(v)
-
-	if err := vc.Check(); err != nil {
-		return errors.Wrap(err, "could not validate auth with child token")
-	}
-
-	return nil
-}
-
-func (vc *Client) FetchSecrets() ([]*secret.Secret, error) {
-	logical := vc.vaultClient.Logical()
-
-	secrets := make([]*secret.Secret, 0)
-	for _, path := range vc.config.Paths {
-		sec, err := logical.Read(path)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not get secret at path: %s", path)
-		}
-
-		if sec == nil {
-			log.Warnf("secret at %s is nil, skipping", path)
-			continue
-		}
-
-		secrets = append(secrets, secret.NewSecret(vc, path, sec))
-	}
-
-	return secrets, nil
-}
-
-// intoEnviron templates a set of secret data into a map[string]string to use
-// as environment variables to the child program
-func (vc *Client) secretsIntoEnviron(secrets []*secret.Secret) (map[string]string, error) {
-	secretCtx, err := vc.secretsAsMap(secrets)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create map from secrets")
-	}
-
-	environ := os.Environ()
-	envMap := make(map[string]string, 0)
-
-	for _, envVar := range environ {
-		pair := strings.SplitN(envVar, "=", 2)
-
-		key, value := pair[0], pair[1]
-		if vc.keyIsFiltered(key) {
-			continue
-		}
-
-		tpl, err := template.NewEnvTemplate(key, value)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not parse environment variable template")
-		}
-
-		envMap[key], err = tpl.Render(secretCtx)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not render environment variable template")
-		}
-	}
-
-	return envMap, nil
-}
-
-func (vc *Client) keyIsFiltered(key string) bool {
-	if strings.HasPrefix(key, "INIT_") {
-		return true
-	} else if strings.HasPrefix(key, "VAULT_") {
-		if vc.config.NoInheritToken {
-			return true
-		}
-	}
-
-	return false
-}
-
-// secretsAsMap merges a bundle of secrets into a single map[string]interface{}
-// to be consumed by secretsIntoEnviron.
-func (vc *Client) secretsAsMap(secrets []*secret.Secret) (map[string]interface{}, error) {
-	data := make(map[string]interface{}, 0)
-
-	for _, secret := range secrets {
-		if err := mergo.Merge(&data, secret.dataMap()); err != nil {
-			return nil, errors.Wrap(err, "could not merge secret to data")
-		}
-	}
-
-	// If token inheritance is enabled, include the Vault connection
-	// information in the environment context
-	if !vc.config.NoInheritToken {
-		data["Vault"] = vc.vaultSettingsAsMap()
-	}
-
-	return data, nil
 }
 
 func (vc *Client) vaultSettingsAsMap() map[string]interface{} {
@@ -235,21 +60,4 @@ func (vc *Client) vaultSettingsAsMap() map[string]interface{} {
 	data["token"] = vc.vaultClient.Token()
 
 	return data
-}
-
-// StartWatcher creates and lanches a watcher that submits environment
-// updates to the supervisor.
-func (vc *Client) StartWatcher(ctx context.Context, refreshDuration time.Duration) (chan []string, error) {
-	// Build an updates channel we can pass back to the supervisor
-	updateCh := make(chan []string, 1)
-
-	// Launch the watcher goroutine
-	watcher, err := watcher.NewWatcher(vc, refreshDuration)
-	if err != nil {
-		return nil, errors.Wrap(err, "while creating watcher")
-	}
-
-	go watcher.Watch(ctx, updateCh)
-
-	return updateCh, nil
 }

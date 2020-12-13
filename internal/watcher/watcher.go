@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"glow.dev.maio.me/seanj/vault-init/internal/secret"
+	"glow.dev.maio.me/seanj/vault-init/internal/template"
 	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
 )
 
@@ -67,24 +68,30 @@ func (w *Watcher) checkSecrets(secrets []*secret.Secret) (bool, error) {
 
 	updated := false
 
-	for _, secret := range secrets {
+	for _, sec := range secrets {
 		// Skip renewable secrets
-		renewable, err := secret.IsRenewable()
+		renewable, err := sec.IsRenewable()
 		if renewable {
-			log.WithField("secretPath", secret.Path).Debugf("Skipping secret as it is renewable")
+			log.WithField("secretPath", sec.Path).Debugf("Skipping secret as it is renewable")
 			continue
 		} else if err != nil {
-			return false, errors.Wrapf(err, "could not check if secret `%s` is renewable", secret.Path)
+			return false, errors.Wrapf(err, "could not check if secret `%s` is renewable", sec.Path)
 		}
 
-		hasUpdate, err := secret.Update()
+		nextSecret, err := w.client.FetchSecret(sec.Path)
 		if err != nil {
-			log.WithField("secretPath", secret.Path).WithError(err).Errorf("Error checking secret for updates")
-			return false, errors.Wrapf(err, "could not check secret `%s` for updates", secret.Path)
+			log.WithField("secretPath", sec.Path).WithError(err).Errorf("Error fetching secret for update check")
+			return false, errors.Wrapf(err, "could not fetch secret `%s` for update check", sec.Path)
 		}
 
-		if hasUpdate {
-			log.WithField("secretPath", secret.Path).Debugf("Update found for secrets")
+		didUpdate, err := sec.Update(nextSecret)
+		if err != nil {
+			log.WithField("secretPath", sec.Path).WithError(err).Errorf("Error checking secret for updates")
+			return false, errors.Wrapf(err, "could not check secret `%s` for updates", sec.Path)
+		}
+
+		if didUpdate {
+			log.WithField("secretPath", sec.Path).Debugf("Update found for secrets")
 			updated = true
 		}
 	}
@@ -95,7 +102,17 @@ func (w *Watcher) checkSecrets(secrets []*secret.Secret) (bool, error) {
 // sendSecrets serializes all known secrets into environment templates
 // and sends them as an update to the supervisor
 func (w *Watcher) sendSecrets(updateCh chan []string, secrets []*secret.Secret) error {
-	environ, err := w.client.secretsIntoEnviron(secrets)
+	dataMap, err := secret.SecretsAsMap(secrets)
+	if err != nil {
+		return errors.Wrap(err, "could not convert secrets into data map")
+	}
+
+	dataMap, err = w.client.InjectChildContext(dataMap)
+	if err != nil {
+		return errors.Wrap(err, "could not inject child context from client")
+	}
+
+	environ, err := template.RenderEnvironmentFromDataMap(w.client.GetConfig(), dataMap)
 	if err != nil {
 		return errors.Wrap(err, "could not convert secrets into environment map")
 	}
