@@ -2,15 +2,25 @@ SHELL := $(shell which bash)
 .PHONY: build cross docker test test/integration test/integration/clean
 
 build:
-	go build -o vault-init ./cmd/vault-init/...
+ifdef out
+	GOOS=$(goos) GOARCH=$(goarch) go build \
+		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-o "$(out)" \
+		./cmd/vault-init/...
+else
+	GOOS=$(goos) GOARCH=$(goarch) go build \
+		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-o vault-init \
+		./cmd/vault-init/...
+endif
 
 cross:
 	mkdir -p release
-	env GOOS=linux GOARCH=amd64 go build -o release/vault-init_linux_amd64 ./cmd/vault-init/...
-	env GOOS=linux GOARCH=arm GOARM=7 go build -o release/vault-init_linux_armv7 ./cmd/vault-init/...
-	env GOOS=linux GOARCH=arm64 go build -o release/vault-init_linux_arm64 ./cmd/vault-init/...
-	env GOOS=linux GOARCH=386 go build -o release/vault-init_linux_386 ./cmd/vault-init/...
-	env GOOS=darwin GOARCH=amd64 go build -o release/vault-init_darwin_amd64 ./cmd/vault-init/...
+	make build goos=linux goarch=amd64 out=release/vault-init_linux_amd64
+	make build goos=linux goarch=arm out=release/vault-init_linux_arm
+	make build goos=linux goarch=arm64 out=release/vault-init_linux_arm64
+	make build goos=linux goarch=386 out=release/vault-init_linux_386
+	make build goos=darwin goarch=amd64 out=release/vault-init_darwin_amd64
 	ls ./release/* | xargs -I{} tar czvpf {}.tar.gz {}
 
 test:

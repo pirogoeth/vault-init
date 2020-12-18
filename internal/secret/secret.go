@@ -56,9 +56,19 @@ func (s *Secret) IsRenewable() (bool, error) {
 // it to the version that is currently stored, and updates the stored secret
 // if the metadata versions are different. Returns whether the secret was updated.
 func (s *Secret) Update(nextSecret *Secret) (bool, error) {
-	hasChanged, err := CompareSecretMetadata(s.Secret, nextSecret.Secret)
-	if err != nil {
-		return false, errors.Wrap(err, "could not compare current and next secret")
+	hasChanged := false
+	var err error
+
+	if HasMetadata(s.Secret) && HasMetadata(nextSecret.Secret) {
+		hasChanged, err = CompareSecretMetadata(s.Secret, nextSecret.Secret)
+		if err != nil {
+			return false, errors.Wrap(err, "could not compare current and next secret metadata")
+		}
+	} else {
+		hasChanged, err = CompareSecretData(s.Secret, nextSecret.Secret)
+		if err != nil {
+			return false, errors.Wrap(err, "could not compare current and next secret data")
+		}
 	}
 
 	if hasChanged {

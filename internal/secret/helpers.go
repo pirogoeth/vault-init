@@ -2,11 +2,22 @@ package secret
 
 import (
 	"encoding/json"
+	"reflect"
 
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 )
+
+// HasMetadata determines if a secret has associated metadata.
+func HasMetadata(sec *vaultApi.Secret) bool {
+	val, ok := sec.Data["metadata"]
+	if !ok {
+		return false
+	}
+
+	return val != nil
+}
 
 // GetVersionFromSecretMetadata extracts the current version of the secret from associated metadata.
 func GetVersionFromSecretMetadata(metadata map[string]interface{}) (int64, error) {
@@ -50,6 +61,11 @@ func CompareSecretMetadata(current, next *vaultApi.Secret) (bool, error) {
 	}
 
 	return currentVersion < nextVersion, nil
+}
+
+// CompareSecretData takes two secrets and compares them by their contents.
+func CompareSecretData(current, next *vaultApi.Secret) (bool, error) {
+	return !reflect.DeepEqual(current, next), nil
 }
 
 func SecretsAsMap(secrets []*Secret) (map[string]interface{}, error) {

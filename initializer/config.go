@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexflint/go-arg"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 )
@@ -56,15 +55,6 @@ type Config struct {
 	TelemetryAddress          string `arg:"--telemetry-address,env:INIT_TELEMETRY_ADDR" help:"Address to expose Prometheus telemetry on. Disabled if blank."`
 	TelemetryCollectorGolang  *bool  `arg:"--use-go-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_GOLANG" help:"Whether the Golang telemetry collector should be started."`
 	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
-}
-
-// NewConfig creates a new Config struct from the command line args
-// and environment variables.
-func NewConfig() *Config {
-	c := &Config{}
-	arg.MustParse(c)
-
-	return c
 }
 
 // ValidateAndSetDefaults validates the arguments set inside of the

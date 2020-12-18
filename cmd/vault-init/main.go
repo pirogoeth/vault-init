@@ -4,15 +4,28 @@ import (
 	"context"
 	"os"
 
+	"github.com/alexflint/go-arg"
 	"github.com/sirupsen/logrus"
 
 	"glow.dev.maio.me/seanj/vault-init/initializer"
+	"glow.dev.maio.me/seanj/vault-init/internal/version"
 )
 
 var log = logrus.WithField("stream", "main")
 
+type argsT struct {
+	initializer.Config
+}
+
+func (argsT) Version() string {
+	return version.Version
+}
+
 func main() {
-	config := initializer.NewConfig()
+	var args = argsT{}
+	arg.MustParse(&args)
+
+	config := &args.Config
 	if err := config.ValidateAndSetDefaults(); err != nil {
 		log.WithError(err).Fatalf("Error validating configuration")
 		os.Exit(1)
