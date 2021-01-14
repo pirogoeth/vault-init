@@ -6,6 +6,7 @@ require (
 	github.com/alexflint/go-arg v1.3.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.9.0 // indirect
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
