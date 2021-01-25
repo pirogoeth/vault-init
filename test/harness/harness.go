@@ -14,17 +14,17 @@ func LoadScenarios(scenarioPaths []string) ([]*Scenario, error) {
 	for _, path := range scenarioPaths {
 		file, err := os.Open(path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 
 		buf := bytes.NewBufferString("")
 		if _, err := buf.ReadFrom(file); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 
 		var scenario Scenario
 		if err := yaml.Unmarshal(buf.Bytes(), &scenario); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 
 		// Attach scenario metadata
@@ -41,7 +41,7 @@ func RunScenarios(scenarios []*Scenario) error {
 		var vaultCfg *vaultApi.Config
 
 		if !scenario.VaultProvider.Managed {
-			provisioner, err := scenario.MakeProvisioner()
+			provisioner, err := scenario.CreateProvisioner()
 			if err != nil {
 				return fmt.Errorf("during scenario %s, the provisioner could not be built: %w", scenario.filepath, err)
 			}
@@ -50,13 +50,25 @@ func RunScenarios(scenarios []*Scenario) error {
 				return fmt.Errorf("during scenario %s, the provisioner failed: %w", scenario.filepath, err)
 			}
 
-			// XXX - Provision a Vault client against the newly provisioned instance
+			vaultCfg, err = provisioner.GenerateVaultAPIConfig()
+			if err != nil {
+				return fmt.Errorf(
+					"during scenario %s, the provisioner failed to generate a Vault client config: %w",
+					scenario.filepath,
+					err,
+				)
+			}
+
+			defer log.Infof("Deprovisioning result: %#v", provisioner.Deprovision())
 		} else {
 			vaultCfg = vaultApi.DefaultConfig()
 			if err := vaultCfg.ReadEnvironment(); err != nil {
 				return fmt.Errorf("during vault config init, environment read failed: %w", err)
 			}
 		}
+
+		// XXX - RUN
+
 	}
 	return nil
 }

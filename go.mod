@@ -5,6 +5,8 @@ go 1.15
 require (
 	github.com/alexflint/go-arg v1.3.0
 	github.com/davecgh/go-spew v1.1.1
+	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
+	github.com/docker/go-connections v0.4.0
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7 // indirect
@@ -29,5 +31,6 @@ require (
 	golang.org/x/net v0.0.0-20201209123823-ac852fbbde11 // indirect
 	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
+	google.golang.org/appengine v1.4.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )

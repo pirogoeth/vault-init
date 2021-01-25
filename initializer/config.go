@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
@@ -32,16 +31,16 @@ const (
 type Config struct {
 	Command []string `arg:"positional"`
 
-	AccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
-	Debug             *bool          `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
-	DisableTokenRenew *bool          `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
-	LogFormat         string         `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
-	NoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
-	NoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
-	OneShot           *bool          `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
-	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
-	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
-	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
+	AccessPolicies    []string `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
+	Debug             *bool    `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
+	DisableTokenRenew *bool    `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
+	LogFormat         string   `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
+	NoInheritToken    *bool    `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
+	NoReaper          *bool    `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
+	OneShot           *bool    `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
+	OrphanToken       *bool    `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
+	Paths             []string `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
+	RefreshDuration   *string  `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
 
 	// TokenPeriod will cause the child token to be created as a periodic token:
 	// https://www.vaultproject.io/docs/concepts/tokens.html#periodic-tokens
@@ -61,8 +60,6 @@ type Config struct {
 // configuration and fills in certain slots with defaults, if the values
 // are unset.
 func (c *Config) ValidateAndSetDefaults() error {
-	var err error
-
 	if c.Debug == nil {
 		c.Debug = new(bool)
 		*c.Debug = defaultDebug
@@ -94,11 +91,7 @@ func (c *Config) ValidateAndSetDefaults() error {
 	}
 
 	if c.RefreshDuration == nil {
-		c.RefreshDuration = new(time.Duration)
-		*c.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
-		if err != nil {
-			return errors.Wrapf(err, "could not parse default secret refresh duration: `%s`", defaultRefreshDuration)
-		}
+		*c.RefreshDuration = defaultRefreshDuration
 	}
 
 	if c.TokenPeriod == "" {

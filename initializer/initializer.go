@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -94,9 +95,15 @@ func Run(ctx context.Context, config *Config) error {
 
 	defer vaultClient.StopSecretRenewer(childSecret)
 
+	// Parse the secret refresh duration string -> time.Duration
+	refreshDuration, err := time.ParseDuration(*config.RefreshDuration)
+	if err != nil {
+		log.WithError(err).Fatalf("Could not parse RefreshDuration")
+	}
+
 	// Start the secret watcher
 	log.WithField("paths", config.Paths).Debugf("Starting secrets watcher")
-	updateCh, err := vaultClient.StartWatcher(ctx, *config.RefreshDuration)
+	updateCh, err := vaultClient.StartWatcher(ctx, refreshDuration)
 	if err != nil {
 		log.WithError(err).Fatalf("Could not start secrets watcher")
 	}
