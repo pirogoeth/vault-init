@@ -14,7 +14,7 @@ meta:
       password: ((glow_registry_ci.password))
     image:
       context: .
-      repo: (( concat meta.registry.repository "/pirogoeth/vault-init" ))
+      repo: (( concat meta.registry.repository "/seanj/vault-init" ))
       tag: latest
 
   repository:
@@ -31,7 +31,7 @@ meta:
   upstream:
     alpine:
       repo: "containers.dev.maio.me/library/alpine"
-      tag: "v3.10"
+      tag: "v3.13"
       auth:
         .: (( inject meta.registry.auth ))
     debian:
