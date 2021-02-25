@@ -46,23 +46,23 @@ resources:
     .: (( inject meta.registry.auth ))
 
 jobs:
-- name: "go test"
+- name: "go-test"
   public: true
   plan:
   - get: source
     trigger: true
-  - task: "run tests"
+  - task: "test"
     file: (( grab meta.tasks.golang-test ))
 
-- name: "go vet"
+- name: "go-vet"
   public: true
   plan:
   - get: source
     trigger: true
-  - task: "vet code"
+  - task: "vet"
     file: (( grab meta.tasks.golang-vet ))
 
-- name: "build vault-init:alpine"
+- name: "build-alpine-image"
   public: true
   plan:
   - get: commons
@@ -71,15 +71,15 @@ jobs:
   - get: source
     trigger: true
     passed:
-    - "go test"
-  - task: "build image"
+    - "go-test"
+  - task: "build-image"
     file: (( grab meta.tasks.img-build-oci ))
     privileged: true
     input_mapping: {context: source}
     params:
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: "Dockerfile"
-  - task: "write image tags"
+  - task: "write-image-tags"
     file: (( grab meta.tasks.img-write-tags ))
     params:
       TAGS: (( grab meta.version ))
@@ -88,7 +88,7 @@ jobs:
       image: image/image.tar
       additional_tags: metadata/additional_tags
 
-- name: "build vault-init:debian"
+- name: "build-debian-image"
   public: true
   plan:
   - get: commons
@@ -97,15 +97,15 @@ jobs:
   - get: source
     trigger: true
     passed:
-    - "go test"
-  - task: "build image"
+    - "go-test"
+  - task: "build-image"
     file: (( grab meta.tasks.img-build-oci ))
     privileged: true
     input_mapping: {context: source}
     params:
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: "Dockerfile.debian"
-  - task: "write image tags"
+  - task: "write-image-tags"
     file: (( grab meta.tasks.img-write-tags ))
     params:
       TAGS: (( concat meta.version "-debian" ))
