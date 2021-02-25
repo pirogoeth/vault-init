@@ -2,13 +2,14 @@ package harness
 
 import (
 	"github.com/hashicorp/vault/api"
+	vaultApi "github.com/hashicorp/vault/api"
 	"glow.dev.maio.me/seanj/vault-init/initializer"
 	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
 )
 
 type mountFixture struct {
-	Path   string                 `json:"path"`
-	Config map[string]interface{} `json:"config"`
+	Path   string               `json:"path"`
+	Config *vaultApi.MountInput `json:"config"`
 }
 
 type secretFixture struct {

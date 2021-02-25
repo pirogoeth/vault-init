@@ -4,20 +4,23 @@ import (
 	"fmt"
 	"strings"
 
+	vaultApi "github.com/hashicorp/vault/api"
+
 	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
 	dockerProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/docker"
 	podmanProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/podman"
 )
 
-func (s *Scenario) SetupFixtures() error {
+func (s *Scenario) SetupFixtures(vaultCli *vaultApi.Client) error {
+	log.Infof("fixures %#v", s.Fixtures)
 	for _, mount := range s.Fixtures.Mounts {
-		if err := s.createMount(mount); err != nil {
+		if err := s.createMount(vaultCli, mount); err != nil {
 			return fmt.Errorf("error while creating mount fixtures: %w", err)
 		}
 	}
 
 	for _, secret := range s.Fixtures.Secrets {
-		if err := s.createSecret(secret); err != nil {
+		if err := s.createSecret(vaultCli, secret); err != nil {
 			return fmt.Errorf("error while creating secret fixtures: %w", err)
 		}
 	}
@@ -25,23 +28,29 @@ func (s *Scenario) SetupFixtures() error {
 	return nil
 }
 
-func (s *Scenario) createMount(mount *mountFixture) error {
+func (s *Scenario) createMount(vaultCli *vaultApi.Client, mount *mountFixture) error {
+	if err := vaultCli.Sys().Mount(mount.Path, mount.Config); err != nil {
+		return fmt.Errorf("during mount fixture %s setup: error while mounting engine: %w", mount.Path, err)
+	}
+
+	log.Infof("Engine mounted at %s", mount.Path)
+
 	return nil
 }
 
-func (s *Scenario) createSecret(secret *secretFixture) error {
+func (s *Scenario) createSecret(vaultCli *vaultApi.Client, secret *secretFixture) error {
 	return nil
 }
 
-func (s *Scenario) TeardownFixtures() error {
+func (s *Scenario) TeardownFixtures(vaultCli *vaultApi.Client) error {
 	for _, secret := range s.Fixtures.Secrets {
-		if err := s.deleteSecret(secret); err != nil {
+		if err := s.deleteSecret(vaultCli, secret); err != nil {
 			return fmt.Errorf("error while destroying secret fixtures: %w", err)
 		}
 	}
 
 	for _, mount := range s.Fixtures.Mounts {
-		if err := s.deleteMount(mount); err != nil {
+		if err := s.deleteMount(vaultCli, mount); err != nil {
 			return fmt.Errorf("error while destroying mount fixtures: %w", err)
 		}
 	}
@@ -49,11 +58,11 @@ func (s *Scenario) TeardownFixtures() error {
 	return nil
 }
 
-func (s *Scenario) deleteMount(mount *mountFixture) error {
+func (s *Scenario) deleteMount(vaultCli *vaultApi.Client, mount *mountFixture) error {
 	return nil
 }
 
-func (s *Scenario) deleteSecret(secret *secretFixture) error {
+func (s *Scenario) deleteSecret(vaultCli *vaultApi.Client, secret *secretFixture) error {
 	return nil
 }
 

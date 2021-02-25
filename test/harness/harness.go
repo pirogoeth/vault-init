@@ -49,6 +49,7 @@ func RunScenarios(scenarios []*Scenario) error {
 			if err := provisioner.Provision(); err != nil {
 				return fmt.Errorf("during scenario %s, the provisioner failed: %w", scenario.filepath, err)
 			}
+			defer log.Infof("Deprovisioning result: %#v", provisioner.Deprovision())
 
 			vaultCfg, err = provisioner.GenerateVaultAPIConfig()
 			if err != nil {
@@ -59,15 +60,25 @@ func RunScenarios(scenarios []*Scenario) error {
 				)
 			}
 
-			defer log.Infof("Deprovisioning result: %#v", provisioner.Deprovision())
 		} else {
 			vaultCfg = vaultApi.DefaultConfig()
 			if err := vaultCfg.ReadEnvironment(); err != nil {
-				return fmt.Errorf("during vault config init, environment read failed: %w", err)
+				return fmt.Errorf("during scenario %s: vault config init failed: %w", scenario.filepath, err)
 			}
 		}
 
-		// XXX - RUN
+		vaultCli, err := vaultApi.NewClient(vaultCfg)
+		if err != nil {
+			return fmt.Errorf("during scenario %s, vault client init failed: %w", scenario.filepath, err)
+		}
+
+		if err := scenario.SetupFixtures(vaultCli); err != nil {
+			return fmt.Errorf(
+				"during scenario %s, the harness failed to set up fixtures: %w",
+				scenario.filepath,
+				err,
+			)
+		}
 
 	}
 	return nil

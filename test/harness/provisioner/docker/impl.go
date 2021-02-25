@@ -59,8 +59,15 @@ func (p *Provisioner) Provision() error {
 		return fmt.Errorf("while provisioning Vault instance, could not inspect image: %w", err)
 	}
 
+	genSecret := "secret"
+
 	containerCfg := image.Config
 	containerCfg.Image = image.ID
+	containerCfg.Env = append(
+		containerCfg.Env,
+		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0",
+		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", genSecret),
+	)
 	hostCfg := &container.HostConfig{
 		AutoRemove:      false,
 		NetworkMode:     container.NetworkMode("bridge"),
