@@ -1,3 +1,5 @@
+goarch := $(shell go env GOARCH)
+goos := $(shell go env GOOS)
 SHELL := $(shell which bash)
 .PHONY: build cross docker test test/integration test/integration/clean
 
@@ -5,12 +7,12 @@ build:
 ifdef out
 	GOOS=$(goos) GOARCH=$(goarch) go build \
 		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
-		-o "$(out)" \
+		-o "$(out)_$(goos)_$(goarch)" \
 		./cmd/vault-init/...
 else
 	GOOS=$(goos) GOARCH=$(goarch) go build \
 		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
-		-o vault-init \
+		-o "vault-init_$(goos)_$(goarch)" \
 		./cmd/vault-init/...
 endif
 
