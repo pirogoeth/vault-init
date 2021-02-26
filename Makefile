@@ -1,20 +1,13 @@
 goarch := $(shell go env GOARCH)
 goos := $(shell go env GOOS)
-SHELL := $(shell which bash)
+out := vault-init_$(goos)_$(goarch)
 .PHONY: build cross docker test test/integration test/integration/clean
 
 build:
-ifdef out
 	GOOS=$(goos) GOARCH=$(goarch) go build \
 		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
-		-o "$(out)_$(goos)_$(goarch)" \
+		-o "$(out)" \
 		./cmd/vault-init/...
-else
-	GOOS=$(goos) GOARCH=$(goarch) go build \
-		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
-		-o "vault-init_$(goos)_$(goarch)" \
-		./cmd/vault-init/...
-endif
 
 cross:
 	mkdir -p release
@@ -29,10 +22,10 @@ test:
 	go test -v ./...
 
 docker:
-	docker build --no-cache --pull -t containers.dev.maio.me/pirogoeth/vault-init:latest -f Dockerfile .
-	docker build --no-cache --pull -t containers.dev.maio.me/pirogoeth/vault-init:debian-latest -f Dockerfile.debian .
-	docker push containers.dev.maio.me/pirogoeth/vault-init:latest
-	docker push containers.dev.maio.me/pirogoeth/vault-init:debian-latest
+	docker build --no-cache --pull -t containers.dev.maio.me/seanj/vault-init:latest -f Dockerfile .
+	docker build --no-cache --pull -t containers.dev.maio.me/seanj/vault-init:debian-latest -f Dockerfile.debian .
+	docker push containers.dev.maio.me/seanj/vault-init:latest
+	docker push containers.dev.maio.me/seanj/vault-init:debian-latest
 
 test/integration/clean:
 	cd contrib && docker-compose down
