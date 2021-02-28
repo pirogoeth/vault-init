@@ -41,3 +41,8 @@ meta:
     commons:
       uri: "https://glow.dev.maio.me/containers/commons.git"
       branch: "master"
+    golang:
+      repo: "containers.dev.maio.me/library/golang"
+      tag: "1.15.6"
+      auth:
+        .: (( inject meta.registry.auth ))

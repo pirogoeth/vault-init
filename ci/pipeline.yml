@@ -77,6 +77,10 @@ jobs:
     privileged: true
     input_mapping: {context: source}
     params:
+      BUILD_ARG_ALPINE_REPO: (( grab meta.upstream.alpine.repo ))
+      BUILD_ARG_ALPINE_VERSION: (( grab meta.upstream.alpine.tag ))
+      BUILD_ARG_GOLANG_REPO: (( grab meta.upstream.golang.repo ))
+      BUILD_ARG_GOLANG_VERSION: (( grab meta.upstream.golang.tag ))
       CONTEXT: (( grab meta.registry.image.context ))
       DOCKERFILE: "Dockerfile"
   - task: "write-image-tags"
