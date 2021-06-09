@@ -11,6 +11,9 @@ type Config struct {
 	// ie., containers.dev.maio.me/library/alpine:latest
 	Image      string `json:"image"`
 	AlwaysPull bool   `json:"always_pull"`
+	Vault      struct {
+		RootSecret string `json:"root_secret"`
+	} `json:"vault"`
 }
 
 type Provisioner struct {

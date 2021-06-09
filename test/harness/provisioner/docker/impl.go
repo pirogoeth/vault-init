@@ -1,16 +1,17 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	vaultApi "github.com/hashicorp/vault/api"
 
 	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
@@ -54,19 +55,19 @@ func (p *Provisioner) Provision() error {
 		if err != nil {
 			return fmt.Errorf("while provisioning Vault instance, could not pull container image: %w", err)
 		}
+		childCtx, childCancel := context.WithCancel(p.ctx)
+		waitUntilCompletion(childCtx, childCancel, resp)
 		resp.Close()
 	} else if err != nil {
 		return fmt.Errorf("while provisioning Vault instance, could not inspect image: %w", err)
 	}
 
-	genSecret := "secret"
-
 	containerCfg := image.Config
 	containerCfg.Image = image.ID
 	containerCfg.Env = append(
 		containerCfg.Env,
-		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0",
-		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", genSecret),
+		"VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200",
+		fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", p.cfg.Vault.RootSecret),
 	)
 	hostCfg := &container.HostConfig{
 		AutoRemove:      false,
@@ -106,57 +107,92 @@ func (p *Provisioner) Deprovision() error {
 	return nil
 }
 
-func (p *Provisioner) GenerateVaultAPIConfig() (*vaultApi.Config, error) {
+func (p *Provisioner) SpawnVaultAPIClient() (*vaultApi.Client, error) {
 	if p.cfg == nil {
 		return nil, fmt.Errorf("docker provisioner has not been properly initialized")
 	}
 
 	containerInfo, err := p.dockerClient.ContainerInspect(p.ctx, p.containerID)
 	if err != nil {
-		return nil, fmt.Errorf("while generating Vault API config, could not inspect container: %w", err)
+		return nil, fmt.Errorf("while generating Vault API client, could not inspect container: %w", err)
 	}
 
-	httpAPIPort, err := p.checkPorts(containerInfo.NetworkSettings.Ports["8200/tcp"])
+	containerDefaultAddress := containerInfo.NetworkSettings.DefaultNetworkSettings.IPAddress
+	err = p.checkAddress(containerDefaultAddress, 8200)
 	if err != nil {
-		return nil, fmt.Errorf("while generating Vault API config, could not test port bindings: %w", err)
+		return nil, fmt.Errorf("while spawning Vault API client, could not test port bindings: %w", err)
 	}
-	hostIP := httpAPIPort.HostIP
-	hostPort := httpAPIPort.HostPort
 
-	log.Infof("Vault appears to be listening on %s:%s", hostIP, hostPort)
+	cfg := &vaultApi.Config{Address: fmt.Sprintf("http://%s:%d", containerDefaultAddress, 8200)}
+	client, err := vaultApi.NewClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("while spawning Vault API client: %w", err)
+	}
 
-	return nil, nil
+	client.SetToken(p.cfg.Vault.RootSecret)
+
+	return client, nil
 }
 
-func (p *Provisioner) checkPorts(ports []nat.PortBinding) (nat.PortBinding, error) {
+func (p *Provisioner) checkAddress(addr string, port uint16) error {
 	tries := 3
 
 	for tries > 0 {
-		for _, port := range ports {
-			hostIP := port.HostIP
-			hostPort := port.HostPort
-
-			testCfg := &vaultApi.Config{Address: fmt.Sprintf("http://%s:%s", hostIP, hostPort)}
-			testCli, err := vaultApi.NewClient(testCfg)
-			if err != nil {
-				log.Debugf("while testing port binding %s:%s, could not create Vault client: %w", hostIP, hostPort, err)
-				continue
-			}
-
-			health, err := testCli.Sys().Health()
-			if err != nil {
-				log.Debugf("while testing port binding %s:%s, could not get health status: %w", hostIP, hostPort, err)
-				continue
-			}
-
-			log.Debugf("Got health response from %s:%s: %#v", hostIP, hostPort, health)
-
-			return port, nil
+		testCfg := &vaultApi.Config{Address: fmt.Sprintf("http://%s:%d", addr, port)}
+		testCli, err := vaultApi.NewClient(testCfg)
+		if err != nil {
+			log.Debugf("while testing port binding %s:%d, could not create Vault client: %+v", addr, port, err)
+			tries--
+			time.Sleep(1 * time.Second)
+			continue
 		}
 
-		tries--
-		time.Sleep(1 * time.Second)
+		health, err := testCli.Sys().Health()
+		if err != nil {
+			log.Debugf("while testing port binding %s:%d, could not get health status: %+v", addr, port, err)
+			tries--
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		log.Debugf("Got health response from %s:%d: %#v", addr, port, health)
+		return nil
 	}
 
-	return nat.PortBinding{}, fmt.Errorf("no port mappings for 8200/tcp returned a health response")
+	return fmt.Errorf("address %s:%d did not return a health response", addr, port)
+}
+
+func waitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader io.Reader) error {
+	lines := make(chan string)
+	go readToEnd(reader, lines)
+	for {
+		select {
+		case line, ok := <-lines:
+			if !ok {
+				cancel()
+			} else {
+				log.Debugf("Read: %s", line)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+			continue
+		}
+	}
+}
+
+func readToEnd(reader io.Reader, dest chan<- string) {
+	buf := bufio.NewScanner(reader)
+	for {
+		if ok := buf.Scan(); !ok {
+			close(dest)
+			if err := buf.Err(); err != nil {
+				panic(err)
+			}
+
+			return
+		}
+
+		dest <- buf.Text()
+	}
 }

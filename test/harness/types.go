@@ -1,7 +1,8 @@
 package harness
 
 import (
-	"github.com/hashicorp/vault/api"
+	"time"
+
 	vaultApi "github.com/hashicorp/vault/api"
 	"glow.dev.maio.me/seanj/vault-init/initializer"
 	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
@@ -23,8 +24,15 @@ type fixtures struct {
 }
 
 type vaultConnectionInfo struct {
-	Config    *api.Config    `json:"config,omitempty"`
-	TLSConfig *api.TLSConfig `json:"tls,omitempty"`
+	Config    *vaultApi.Config    `json:"config,omitempty"`
+	TLSConfig *vaultApi.TLSConfig `json:"tls,omitempty"`
+}
+
+type vaultHealthcheckConfig struct {
+	// Tries is the number of times to attempt the Vault healthcheck
+	Tries uint16 `json:"tries,omitempty"`
+	// Interval is the wait time between attempts of the Vault healthcheck
+	Interval time.Duration `json:"duration,omitempty"`
 }
 
 type vaultProvider struct {
@@ -36,13 +44,30 @@ type vaultProvider struct {
 	// ProvisionerCfg provides a common config to be used by any of the supported
 	// provisioner backends.
 	ProvisionerCfg *provisioner.Config `json:"provisioner,omitempty"`
+	// HealthcheckCfg is the configuration for testing liveness of the provisioned Vault instance
+	HealthcheckCfg *vaultHealthcheckConfig `json:"liveness_check,omitempty"`
+}
+
+type testSuite struct {
+	// Environment sets the expected environment variables for the test suite process.
+	Environment map[string]string `json:"env,omitempty"`
+	// Suite defines which test suite file should be run.
+	Suite string `json:"suite"`
+	// Args defines an optional list of command line args to pass to `go test`
+	Args []string `json:"args,omitempty"`
 }
 
 type Scenario struct {
 	Fixtures      fixtures            `json:"fixtures"`
 	VaultInitCfg  *initializer.Config `json:"vault-init"`
 	VaultProvider *vaultProvider      `json:"vault"`
-	Tests         []string            `json:"tests"`
+	Tests         []*testSuite        `json:"tests"`
 
-	filepath string `json:"-"`
+	filepath string        `json:"-"`
+	opts     *ScenarioOpts `json:"-"`
+}
+
+type ScenarioOpts struct {
+	// NoDeprovision instructs the harness not to deprovision the Vault instance.
+	NoDeprovision bool
 }

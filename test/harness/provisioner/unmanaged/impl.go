@@ -1,7 +1,8 @@
-package podman
+package unmanaged
 
 import (
 	"encoding/json"
+	"fmt"
 
 	vaultApi "github.com/hashicorp/vault/api"
 
@@ -27,5 +28,15 @@ func (p *Provisioner) Deprovision() error {
 }
 
 func (p *Provisioner) SpawnVaultAPIClient() (*vaultApi.Client, error) {
-	return nil, nil
+	vaultCfg := vaultApi.DefaultConfig()
+	if err := vaultCfg.ReadEnvironment(); err != nil {
+		return nil, fmt.Errorf("vault config init failed: %w", err)
+	}
+
+	vaultCli, err := vaultApi.NewClient(vaultCfg)
+	if err != nil {
+		return nil, fmt.Errorf("vault client init failed: %w", err)
+	}
+
+	return vaultCli, nil
 }

@@ -19,5 +19,5 @@ type Provisioner interface {
 	Configure(*json.RawMessage) error
 	Provision() error
 	Deprovision() error
-	GenerateVaultAPIConfig() (*vaultApi.Config, error)
+	SpawnVaultAPIClient() (*vaultApi.Client, error)
 }

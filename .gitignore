@@ -2,3 +2,4 @@
 /vault-init-test-harness
 .DS_Store
 /release
+./*_linux_amd64
