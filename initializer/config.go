@@ -40,7 +40,7 @@ type Config struct {
 	OneShot           *bool    `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
 	OrphanToken       *bool    `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
 	Paths             []string `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
-	RefreshDuration   *string  `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
+	RefreshDuration   string   `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
 
 	// TokenPeriod will cause the child token to be created as a periodic token:
 	// https://www.vaultproject.io/docs/concepts/tokens.html#periodic-tokens
@@ -54,6 +54,37 @@ type Config struct {
 	TelemetryAddress          string `arg:"--telemetry-address,env:INIT_TELEMETRY_ADDR" help:"Address to expose Prometheus telemetry on. Disabled if blank."`
 	TelemetryCollectorGolang  *bool  `arg:"--use-go-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_GOLANG" help:"Whether the Golang telemetry collector should be started."`
 	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
+}
+
+func (c *Config) Clone() (*Config, error) {
+	cloned := &Config{}
+	if err := cloned.ValidateAndSetDefaults(); err != nil {
+		return nil, fmt.Errorf("while cloning an initializer.Config, got error: %w", err)
+	}
+
+	copy(cloned.Command, c.Command)
+	copy(cloned.AccessPolicies, c.AccessPolicies)
+	copy(cloned.Paths, c.Paths)
+
+	cloned.LogFormat = c.LogFormat
+	cloned.RefreshDuration = c.RefreshDuration
+	cloned.TokenPeriod = c.TokenPeriod
+	cloned.TokenTTL = c.TokenTTL
+	cloned.VaultAddress = c.VaultAddress
+	cloned.VaultToken = c.VaultToken
+	cloned.VaultTokenFile = c.VaultTokenFile
+	cloned.TelemetryAddress = c.TelemetryAddress
+
+	*cloned.Debug = *c.Debug
+	*cloned.DisableTokenRenew = *c.DisableTokenRenew
+	*cloned.NoInheritToken = *c.NoInheritToken
+	*cloned.NoReaper = *c.NoReaper
+	*cloned.OneShot = *c.OneShot
+	*cloned.Verbose = *c.Verbose
+	*cloned.TelemetryCollectorGolang = *c.TelemetryCollectorGolang
+	*cloned.TelemetryCollectorProcess = *c.TelemetryCollectorProcess
+
+	return cloned, nil
 }
 
 // ValidateAndSetDefaults validates the arguments set inside of the
@@ -90,8 +121,8 @@ func (c *Config) ValidateAndSetDefaults() error {
 		*c.NoReaper = defaultNoReaper
 	}
 
-	if c.RefreshDuration == nil {
-		*c.RefreshDuration = defaultRefreshDuration
+	if c.RefreshDuration == "" {
+		c.RefreshDuration = defaultRefreshDuration
 	}
 
 	if c.TokenPeriod == "" {

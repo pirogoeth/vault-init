@@ -1,11 +1,9 @@
 package docker
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -15,6 +13,7 @@ import (
 	vaultApi "github.com/hashicorp/vault/api"
 
 	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
+	"glow.dev.maio.me/seanj/vault-init/test/harness/util"
 )
 
 var _ provisioner.Provisioner = (*Provisioner)(nil)
@@ -28,7 +27,7 @@ func New() provisioner.Provisioner {
 }
 
 func (p *Provisioner) Configure(cfgJson *json.RawMessage) error {
-	dockerClient, err := client.NewEnvClient()
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("while configuring docker provisioner, could not create docker client: %w", err)
 	}
@@ -56,7 +55,7 @@ func (p *Provisioner) Provision() error {
 			return fmt.Errorf("while provisioning Vault instance, could not pull container image: %w", err)
 		}
 		childCtx, childCancel := context.WithCancel(p.ctx)
-		waitUntilCompletion(childCtx, childCancel, resp)
+		util.WaitUntilCompletion(childCtx, childCancel, resp)
 		resp.Close()
 	} else if err != nil {
 		return fmt.Errorf("while provisioning Vault instance, could not inspect image: %w", err)
@@ -77,7 +76,7 @@ func (p *Provisioner) Provision() error {
 	netCfg := &network.NetworkingConfig{}
 	name := ""
 
-	created, err := p.dockerClient.ContainerCreate(p.ctx, containerCfg, hostCfg, netCfg, name)
+	created, err := p.dockerClient.ContainerCreate(p.ctx, containerCfg, hostCfg, netCfg, nil, name)
 	if err != nil {
 		return fmt.Errorf("while provisioning Vault instance, could not create container: %w", err)
 	}
@@ -160,39 +159,4 @@ func (p *Provisioner) checkAddress(addr string, port uint16) error {
 	}
 
 	return fmt.Errorf("address %s:%d did not return a health response", addr, port)
-}
-
-func waitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader io.Reader) error {
-	lines := make(chan string)
-	go readToEnd(reader, lines)
-	for {
-		select {
-		case line, ok := <-lines:
-			if !ok {
-				cancel()
-			} else {
-				log.Debugf("Read: %s", line)
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(10 * time.Millisecond):
-			continue
-		}
-	}
-}
-
-func readToEnd(reader io.Reader, dest chan<- string) {
-	buf := bufio.NewScanner(reader)
-	for {
-		if ok := buf.Scan(); !ok {
-			close(dest)
-			if err := buf.Err(); err != nil {
-				panic(err)
-			}
-
-			return
-		}
-
-		dest <- buf.Text()
-	}
 }

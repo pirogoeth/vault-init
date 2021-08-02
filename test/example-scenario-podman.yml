@@ -1,0 +1,46 @@
+---
+
+fixtures:
+  mounts:
+  - path: /secret
+    config:
+      type: kv
+  - path: /totp
+    config:
+      type: totp
+  secrets:
+  - path: /totp/keys/Service
+    data:
+      generate: true
+      issuer: Vault
+      account_name: vault-init-test
+  - path: /secret/shared
+    data:
+      session_key: pb5fgEOZwKHf09Zz373a835DteugBmte
+
+vault-init:
+  Debug: true
+  LogFormat: plain
+  OneShot: true
+  RefreshDuration: 5m
+  Verbose: true
+
+vault:
+  managed: yes
+  provisioner:
+    use: podman
+    config:
+      runtime_config: ~
+      image: docker.io/library/vault:latest
+      always_pull: yes
+      vault:
+        root_secret: "test"
+
+tests:
+- env:
+    SERVICE_VAULT_API_TOKEN: "{{.Vault.token}}"
+    KEY: "{{.secret.data.shared.data.session_key}}"
+    OTP: "{{.totp.code.Service.code}}"
+  suite: test/suites/basic_test.go
+  args:
+    - -coverpkg glow.dev.maio.me/seanj/vault-init

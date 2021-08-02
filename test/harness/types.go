@@ -57,6 +57,8 @@ type testSuite struct {
 	Args []string `json:"args,omitempty"`
 }
 
+type testSuiteResult map[string]interface{}
+
 type Scenario struct {
 	Fixtures      fixtures            `json:"fixtures"`
 	VaultInitCfg  *initializer.Config `json:"vault-init"`

@@ -96,7 +96,7 @@ func Run(ctx context.Context, config *Config) error {
 	defer vaultClient.StopSecretRenewer(childSecret)
 
 	// Parse the secret refresh duration string -> time.Duration
-	refreshDuration, err := time.ParseDuration(*config.RefreshDuration)
+	refreshDuration, err := time.ParseDuration(config.RefreshDuration)
 	if err != nil {
 		log.WithError(err).Fatalf("Could not parse RefreshDuration")
 	}
