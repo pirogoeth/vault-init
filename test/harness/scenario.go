@@ -15,6 +15,7 @@ import (
 	dockerProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/docker"
 	podmanProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/podman"
 	unmanagedProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/unmanaged"
+	"glow.dev.maio.me/seanj/vault-init/test/harness/util/stringlist"
 )
 
 func (s *Scenario) SetupFixtures(vaultCli *vaultApi.Client) error {
@@ -135,10 +136,29 @@ func (s *Scenario) CreateProvisioner() (provisioner.Provisioner, error) {
 	return provisioner, nil
 }
 
+func (s *Scenario) ConfigureVaultInitFromVaultClient(vaultCli *vaultApi.Client) error {
+	if s.VaultInitCfg.VaultAddress == "" {
+		s.VaultInitCfg.VaultAddress = vaultCli.Address()
+		log.Debugf("Setting vault-init connection address: %s", s.VaultInitCfg.VaultAddress)
+	} else {
+		log.Infof("Scenario sets a Vault address - not overriding")
+	}
+
+	if s.VaultInitCfg.VaultToken == "" {
+		s.VaultInitCfg.VaultToken = vaultCli.Token()
+		log.Debugf("Setting vault-init token: %s", s.VaultInitCfg.VaultToken)
+	} else {
+		log.Infof("Scenario sets a Vault token - not overriding")
+	}
+
+	return nil
+}
+
 func (s *Scenario) RunTests() error {
 	results := make(chan testSuiteResult)
-	fmt.Printf("%#v", os.Environ())
+	log.Debugf("%#v", os.Environ())
 	for _, test := range s.Tests {
+		test.Environment[EnvUnderTest] = "yes"
 		go s.runTest(results, test)
 	}
 	completed := 0
@@ -164,21 +184,23 @@ func (s *Scenario) runTest(resultChan chan<- testSuiteResult, suite *testSuite) 
 
 	command := []string{"go", "test"}
 	command = append(command, suite.Args...)
+	if !stringlist.Contains(command, ArgGoTestJson) {
+		command = append(command, ArgGoTestJson)
+	}
 	command = append(command, suite.Suite)
 
 	initCfg, err := s.VaultInitCfg.Clone()
 	if err != nil {
 		panic(fmt.Errorf("while cloning initializer.Config, got error: %w", err))
 	}
-
 	initCfg.Command = command
 
-	result := testSuiteResult{}
+	result := EmptyTestSuiteResult()
 	ctx, _ := context.WithCancel(context.Background())
 	err = initializer.Run(ctx, initCfg)
 	if err != nil {
-		result["err"] = err.Error()
+		result.Error = err
 	}
 
-	resultChan <- result
+	resultChan <- *result
 }

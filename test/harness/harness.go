@@ -76,6 +76,14 @@ func RunScenarios(scenarios []*Scenario) error {
 			)
 		}
 
+		if err := scenario.ConfigureVaultInitFromVaultClient(vaultCli); err != nil {
+			return fmt.Errorf(
+				"during scenario %s, the harness failed to configure vault-init: %w",
+				scenario.filepath,
+				err,
+			)
+		}
+
 		if err := scenario.RunTests(); err != nil {
 			return fmt.Errorf(
 				"during scenario %s, the harness caught a failure during tests: %w",

@@ -2,6 +2,7 @@ package initializer
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -54,13 +55,15 @@ type Config struct {
 	TelemetryAddress          string `arg:"--telemetry-address,env:INIT_TELEMETRY_ADDR" help:"Address to expose Prometheus telemetry on. Disabled if blank."`
 	TelemetryCollectorGolang  *bool  `arg:"--use-go-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_GOLANG" help:"Whether the Golang telemetry collector should be started."`
 	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
+
+	// ForwarderStdoutWriters allows an external embedder to capture the child's stdout.
+	ForwarderStdoutWriters []io.Writer `arg:"-"`
+	// ForwarderStderrWriters allows an external embedder to capture the child's stderr.
+	ForwarderStderrWriters []io.Writer `arg:"-"`
 }
 
 func (c *Config) Clone() (*Config, error) {
 	cloned := &Config{}
-	if err := cloned.ValidateAndSetDefaults(); err != nil {
-		return nil, fmt.Errorf("while cloning an initializer.Config, got error: %w", err)
-	}
 
 	copy(cloned.Command, c.Command)
 	copy(cloned.AccessPolicies, c.AccessPolicies)
@@ -75,14 +78,49 @@ func (c *Config) Clone() (*Config, error) {
 	cloned.VaultTokenFile = c.VaultTokenFile
 	cloned.TelemetryAddress = c.TelemetryAddress
 
-	*cloned.Debug = *c.Debug
-	*cloned.DisableTokenRenew = *c.DisableTokenRenew
-	*cloned.NoInheritToken = *c.NoInheritToken
-	*cloned.NoReaper = *c.NoReaper
-	*cloned.OneShot = *c.OneShot
-	*cloned.Verbose = *c.Verbose
-	*cloned.TelemetryCollectorGolang = *c.TelemetryCollectorGolang
-	*cloned.TelemetryCollectorProcess = *c.TelemetryCollectorProcess
+	if c.Debug != nil {
+		cloned.Debug = new(bool)
+		*cloned.Debug = *c.Debug
+	}
+
+	if c.DisableTokenRenew != nil {
+		cloned.DisableTokenRenew = new(bool)
+		*cloned.DisableTokenRenew = *c.DisableTokenRenew
+	}
+
+	if c.NoInheritToken != nil {
+		cloned.NoInheritToken = new(bool)
+		*cloned.NoInheritToken = *c.NoInheritToken
+	}
+
+	if c.NoReaper != nil {
+		cloned.NoReaper = new(bool)
+		*cloned.NoReaper = *c.NoReaper
+	}
+
+	if c.OneShot != nil {
+		cloned.OneShot = new(bool)
+		*cloned.OneShot = *c.OneShot
+	}
+
+	if c.Verbose != nil {
+		cloned.Verbose = new(bool)
+		*cloned.Verbose = *c.Verbose
+	}
+
+	if c.TelemetryCollectorGolang != nil {
+		cloned.TelemetryCollectorGolang = new(bool)
+		*cloned.TelemetryCollectorGolang = *c.TelemetryCollectorGolang
+	}
+
+	if c.TelemetryCollectorProcess != nil {
+		cloned.TelemetryCollectorProcess = new(bool)
+		*cloned.TelemetryCollectorProcess = *c.TelemetryCollectorProcess
+	}
+
+	if err := cloned.ValidateAndSetDefaults(); err != nil {
+		return nil, fmt.Errorf("while cloning an initializer.Config, got error: %w", err)
+	}
 
 	return cloned, nil
 }

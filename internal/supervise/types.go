@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 
 	"github.com/mitchellh/go-linereader"
 )
@@ -20,11 +21,13 @@ type state struct {
 // forwarder takes a stdout and stderr pipe from a child program
 // and muxes them both into our logger
 type forwarder struct {
+	sync.Mutex
+
 	stdoutCh *linereader.Reader
 	stderrCh *linereader.Reader
 
-	outWriter io.Writer
-	errWriter io.Writer
+	outWriters []io.Writer
+	errWriters []io.Writer
 
 	cancel context.CancelFunc
 }
@@ -38,6 +41,12 @@ type Config struct {
 	// DisableReaper tells the supervisor not to start the subprocess
 	// reaper for cases when vault-init is not running as pid 1
 	DisableReaper bool
+
+	// ForwarderStderrWriters
+	ForwarderStderrWriters []io.Writer
+
+	// ForwarderStdoutWriters
+	ForwarderStdoutWriters []io.Writer
 
 	// OneShot tells the supervisor not to restart the child after it exits
 	OneShot bool

@@ -3,3 +3,4 @@
 .DS_Store
 /release
 ./*_linux_amd64
+remote.conf

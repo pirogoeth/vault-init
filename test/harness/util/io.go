@@ -7,7 +7,11 @@ import (
 	"time"
 )
 
-func WaitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader io.Reader) error {
+type ReaderCallback = func(context.Context, string)
+
+// ReadLinesToCallback takes a context.Context, io.Reader, and callback. It reads the io.Reader until its end,
+// writing all lines in the reader to the callback function. Each line emitted will trigger a new callback.
+func ReadLinesToCallback(ctx context.Context, cancel context.CancelFunc, reader io.Reader, callback ReaderCallback) error {
 	lines := make(chan string)
 	go readToEnd(reader, lines)
 	for {
@@ -16,7 +20,7 @@ func WaitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader 
 			if !ok {
 				cancel()
 			} else {
-				log.Debugf("Read: %s", line)
+				callback(ctx, line)
 			}
 		case <-ctx.Done():
 			return ctx.Err()
@@ -24,6 +28,12 @@ func WaitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader 
 			continue
 		}
 	}
+}
+
+func WaitUntilCompletion(ctx context.Context, cancel context.CancelFunc, reader io.Reader) error {
+	return ReadLinesToCallback(ctx, cancel, reader, func(_ context.Context, line string) {
+		log.Debugf("Read: %s", line)
+	})
 }
 
 func readToEnd(reader io.Reader, dest chan<- string) {

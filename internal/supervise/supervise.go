@@ -66,7 +66,7 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 	return s.haltAndWaitChild(supState.child)
 }
 
-// handleEnvironmentUpdate accepts the `*event` structure and returns (stop bool, err error)
+// handleEnvironmentUpdate accepts the `*state` structure and returns (stop bool, err error)
 // When an environment update occurs, try to gracefully terminate the previous child, if any,
 // and spawn a new child in its place.
 func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string) (bool, error) {
@@ -138,6 +138,8 @@ func (s *Supervisor) spawnChild(supState *state, environ []string) error {
 	}
 
 	fwd := newForwarder(stdoutPipe, stderrPipe)
+	fwd.TeeStderr(s.config.ForwarderStderrWriters...)
+	fwd.TeeStdout(s.config.ForwarderStdoutWriters...)
 	fwd.Start(supState.childCtx)
 
 	log.WithFields(logrus.Fields{

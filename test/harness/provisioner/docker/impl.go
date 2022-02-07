@@ -55,7 +55,7 @@ func (p *Provisioner) Provision() error {
 			return fmt.Errorf("while provisioning Vault instance, could not pull container image: %w", err)
 		}
 		childCtx, childCancel := context.WithCancel(p.ctx)
-		util.WaitUntilCompletion(childCtx, childCancel, resp)
+		util.ReadLinesToCallback(childCtx, childCancel, resp, dockerLogCallback)
 		resp.Close()
 	} else if err != nil {
 		return fmt.Errorf("while provisioning Vault instance, could not inspect image: %w", err)
@@ -159,4 +159,13 @@ func (p *Provisioner) checkAddress(addr string, port uint16) error {
 	}
 
 	return fmt.Errorf("address %s:%d did not return a health response", addr, port)
+}
+
+func dockerLogCallback(ctx context.Context, line string) {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(line), &data); err != nil {
+		log.Debugf("Couldn't parse image pull log: %w", err)
+	}
+
+	log.Debugf("%s", data["status"])
 }

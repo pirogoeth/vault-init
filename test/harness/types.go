@@ -57,7 +57,26 @@ type testSuite struct {
 	Args []string `json:"args,omitempty"`
 }
 
-type testSuiteResult map[string]interface{}
+type testSuiteResult struct {
+	// Error is the error returned by the vault-init initializer, if any.
+	Error error
+	// Results is the parsed output of `go test`.
+	Results struct {
+		// Passes is the number of suites that have passed
+		Passes int32
+	}
+}
+
+// goTestEvent is pulled from the `TestEvent` defined at `go doc test2json`.
+// We use this to parse the json output of go test and construct the testSuiteResult structure.
+type goTestEvent struct {
+	Time    time.Time `json:",omitempty"`
+	Action  string
+	Package string  `json:",omitempty"`
+	Test    string  `json:",omitempty"`
+	Elapsed float64 `json:",omitempty"`
+	Output  string  `json:",omitempty"`
+}
 
 type Scenario struct {
 	Fixtures      fixtures            `json:"fixtures"`

@@ -112,9 +112,11 @@ func Run(ctx context.Context, config *Config) error {
 
 	// Configure the process supervisor
 	supervisorCfg := &supervise.Config{
-		Command:       config.Command,
-		DisableReaper: *config.NoReaper,
-		OneShot:       *config.OneShot,
+		Command:                config.Command,
+		DisableReaper:          *config.NoReaper,
+		OneShot:                *config.OneShot,
+		ForwarderStderrWriters: config.ForwarderStderrWriters,
+		ForwarderStdoutWriters: config.ForwarderStdoutWriters,
 	}
 
 	// Create the supervisor with the configuration
@@ -139,8 +141,7 @@ func Run(ctx context.Context, config *Config) error {
 		log.WithError(err).Errorf("Supervisor returned an error")
 	}
 
-	// Cleanup and shutdown
-	log.Infof("vault-init shutting down")
+	log.Infof("vault-init shut down")
 
 	// Revoke the child token
 	err = vaultClient.RevokeSecret(childSecret)
@@ -157,14 +158,9 @@ func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, os.Kill)
 
-	for {
-		select {
-		case sig := <-sigChan:
-			log.Infof("Received signal %s, stopping", sig)
-			cancel()
-			return
-		}
-	}
+	sig := <-sigChan
+	log.Infof("Received signal %s, stopping", sig)
+	cancel()
 }
 
 func startTelemetryServer(telemetryAddress string, useGolangCollector, useProcessCollector bool) {
