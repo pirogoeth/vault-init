@@ -142,6 +142,7 @@ func Run(ctx context.Context, config *Config) error {
 	}
 
 	log.Infof("vault-init shut down")
+	cancel()
 
 	// Revoke the child token
 	err = vaultClient.RevokeSecret(childSecret)

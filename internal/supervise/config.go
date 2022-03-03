@@ -1,6 +1,7 @@
 package supervise
 
 import (
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -22,6 +23,17 @@ func (c *Config) Program() (string, error) {
 	}
 
 	return program, nil
+}
+
+// Name returns the canonical "name" of the program, as it will be passed as argv[0]
+func (c *Config) Name() string {
+	arg0 := c.Command[0]
+
+	if strings.Contains(arg0, string(os.PathSeparator)) {
+		return path.Base(arg0)
+	}
+
+	return arg0
 }
 
 // Args returns the arguments to the program provided

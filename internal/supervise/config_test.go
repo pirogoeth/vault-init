@@ -6,6 +6,7 @@ import (
 
 func TestConfig(t *testing.T) {
 	expectProg := "/bin/ls"
+	expectName := "ls"
 	expectStr := "/bin/ls -L /directory"
 
 	cfg := &Config{
@@ -19,6 +20,14 @@ func TestConfig(t *testing.T) {
 			expectProg,
 			program,
 			err,
+		)
+	}
+
+	if cmdName := cfg.Name(); cmdName != expectName {
+		t.Errorf(
+			"expected cfg.Name() to return '%s', got: %s",
+			expectName,
+			cmdName,
 		)
 	}
 

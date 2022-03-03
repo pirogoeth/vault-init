@@ -3,6 +3,8 @@ package harness
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -11,11 +13,11 @@ import (
 	vaultApi "github.com/hashicorp/vault/api"
 
 	"glow.dev.maio.me/seanj/vault-init/initializer"
-	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
-	dockerProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/docker"
-	podmanProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/podman"
-	unmanagedProv "glow.dev.maio.me/seanj/vault-init/test/harness/provisioner/unmanaged"
-	"glow.dev.maio.me/seanj/vault-init/test/harness/util/stringlist"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
+	dockerProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/docker"
+	podmanProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/podman"
+	unmanagedProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/unmanaged"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness/util/stringlist"
 )
 
 func (s *Scenario) SetupFixtures(vaultCli *vaultApi.Client) error {
@@ -156,7 +158,6 @@ func (s *Scenario) ConfigureVaultInitFromVaultClient(vaultCli *vaultApi.Client) 
 
 func (s *Scenario) RunTests() error {
 	results := make(chan testSuiteResult)
-	log.Debugf("%#v", os.Environ())
 	for _, test := range s.Tests {
 		test.Environment[EnvUnderTest] = "yes"
 		go s.runTest(results, test)
@@ -165,7 +166,9 @@ func (s *Scenario) RunTests() error {
 	for {
 		select {
 		case result := <-results:
-			fmt.Printf("test result %#v", result)
+			fmt.Printf("test result %#v\n", result)
+			printReader(result.StdoutReader)
+			printReader(result.StderrReader)
 			completed += 1
 		case <-time.After(1 * time.Second):
 		}
@@ -195,12 +198,30 @@ func (s *Scenario) runTest(resultChan chan<- testSuiteResult, suite *testSuite) 
 	}
 	initCfg.Command = command
 
-	result := EmptyTestSuiteResult()
+	rTestStderr, wTestStderr := io.Pipe()
+	initCfg.ForwarderStderrWriters = append(initCfg.ForwarderStderrWriters, wTestStderr)
+
+	rTestStdout, wTestStdout := io.Pipe()
+	initCfg.ForwarderStdoutWriters = append(initCfg.ForwarderStdoutWriters, wTestStdout)
+
+	result := newTestSuiteResult(rTestStderr, rTestStdout)
+
 	ctx, _ := context.WithCancel(context.Background())
 	err = initializer.Run(ctx, initCfg)
 	if err != nil {
 		result.Error = err
 	}
+	// childCancel()
 
 	resultChan <- *result
+}
+
+func printReader(r io.Reader) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		fmt.Printf("error reading from reader: %#v", err)
+	}
+
+	data := string(b)
+	fmt.Printf("printReader(%#v): %s\n", r, data)
 }

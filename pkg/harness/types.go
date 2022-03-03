@@ -1,11 +1,12 @@
 package harness
 
 import (
+	"io"
 	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
 	"glow.dev.maio.me/seanj/vault-init/initializer"
-	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
 )
 
 type mountFixture struct {
@@ -60,11 +61,10 @@ type testSuite struct {
 type testSuiteResult struct {
 	// Error is the error returned by the vault-init initializer, if any.
 	Error error
-	// Results is the parsed output of `go test`.
-	Results struct {
-		// Passes is the number of suites that have passed
-		Passes int32
-	}
+	// StderrReader is an io.Reader over the test suite's stderr.
+	StderrReader io.ReadCloser
+	// StdoutReader is an io.Reader over the test suite's stdout.
+	StdoutReader io.ReadCloser
 }
 
 // goTestEvent is pulled from the `TestEvent` defined at `go doc test2json`.

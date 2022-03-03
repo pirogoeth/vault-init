@@ -12,8 +12,8 @@ import (
 	"github.com/docker/docker/client"
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"glow.dev.maio.me/seanj/vault-init/test/harness/provisioner"
-	"glow.dev.maio.me/seanj/vault-init/test/harness/util"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness/util"
 )
 
 var _ provisioner.Provisioner = (*Provisioner)(nil)
@@ -164,7 +164,7 @@ func (p *Provisioner) checkAddress(addr string, port uint16) error {
 func dockerLogCallback(ctx context.Context, line string) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
-		log.Debugf("Couldn't parse image pull log: %w", err)
+		log.Debugf("Couldn't parse image pull log: %#v", err)
 	}
 
 	log.Debugf("%s", data["status"])

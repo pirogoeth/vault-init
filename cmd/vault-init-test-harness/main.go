@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"glow.dev.maio.me/seanj/vault-init/internal/version"
-	"glow.dev.maio.me/seanj/vault-init/test/harness"
+	"glow.dev.maio.me/seanj/vault-init/pkg/harness"
 )
 
 type argsT struct {

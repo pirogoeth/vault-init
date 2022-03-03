@@ -18,9 +18,9 @@ type state struct {
 	parentCtx   context.Context
 }
 
-// forwarder takes a stdout and stderr pipe from a child program
+// forwarderv1 takes a stdout and stderr pipe from a child program
 // and muxes them both into our logger
-type forwarder struct {
+type forwarderv1 struct {
 	sync.Mutex
 
 	stdoutCh *linereader.Reader
@@ -43,10 +43,10 @@ type Config struct {
 	DisableReaper bool
 
 	// ForwarderStderrWriters
-	ForwarderStderrWriters []io.Writer
+	ForwarderStderrWriters []io.WriteCloser
 
 	// ForwarderStdoutWriters
-	ForwarderStdoutWriters []io.Writer
+	ForwarderStdoutWriters []io.WriteCloser
 
 	// OneShot tells the supervisor not to restart the child after it exits
 	OneShot bool

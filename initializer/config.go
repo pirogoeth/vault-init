@@ -57,9 +57,9 @@ type Config struct {
 	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
 
 	// ForwarderStdoutWriters allows an external embedder to capture the child's stdout.
-	ForwarderStdoutWriters []io.Writer `arg:"-"`
+	ForwarderStdoutWriters []io.WriteCloser `arg:"-"`
 	// ForwarderStderrWriters allows an external embedder to capture the child's stderr.
-	ForwarderStderrWriters []io.Writer `arg:"-"`
+	ForwarderStderrWriters []io.WriteCloser `arg:"-"`
 }
 
 func (c *Config) Clone() (*Config, error) {

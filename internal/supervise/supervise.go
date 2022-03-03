@@ -2,12 +2,15 @@ package supervise
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 
 	"github.com/pkg/errors"
 	reaper "github.com/ramr/go-reaper"
 	"github.com/sirupsen/logrus"
+
+	"glow.dev.maio.me/seanj/vault-init/pkg/io/forwarder"
 )
 
 // NewSupervisor creates a supervisor instance
@@ -39,13 +42,13 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 	for {
 		select {
 		case envUpdate := <-updateCh:
-			stop, err = s.handleEnvironmentUpdate(supState, envUpdate)
+			stop, supState, err = s.handleEnvironmentUpdate(supState, envUpdate)
 			if err != nil {
 				log.WithError(err).Errorf("Error handling environment update")
 				return errors.Wrapf(err, "error while handling environment update")
 			}
 		case childState := <-s.stateCh:
-			stop, err = s.handleChildStateUpdate(supState, childState)
+			stop, supState, err = s.handleChildStateUpdate(supState, childState)
 			if err != nil {
 				log.WithError(err).Errorf("Error handling state update")
 				return errors.Wrapf(err, "error while handling state update")
@@ -53,7 +56,6 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 		case <-parentCtx.Done():
 			log.Infof("Supervisor received shutdown signal")
 			stop = true
-			break
 		}
 
 		if stop {
@@ -62,14 +64,18 @@ func (s *Supervisor) Start(parentCtx context.Context, updateCh chan []string) er
 	}
 
 	// Always cancel the child context and attempt to wait it
-	supState.childCancel()
-	return s.haltAndWaitChild(supState.child)
+	if supState != nil {
+		supState.childCancel()
+		return s.haltAndWaitChild(supState.child)
+	}
+
+	return nil
 }
 
 // handleEnvironmentUpdate accepts the `*state` structure and returns (stop bool, err error)
 // When an environment update occurs, try to gracefully terminate the previous child, if any,
 // and spawn a new child in its place.
-func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string) (bool, error) {
+func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string) (bool, *state, error) {
 	s.lastEnv = envUpdate
 
 	if supState.child == nil {
@@ -79,25 +85,26 @@ func (s *Supervisor) handleEnvironmentUpdate(supState *state, envUpdate []string
 		// Perform the initial child spawn
 		if err := s.spawnChild(supState, envUpdate); err != nil {
 			log.WithError(err).Errorf("Could not spawn child")
-			return true, errors.Wrapf(err, "error spawning child")
+			return true, supState, errors.Wrapf(err, "error spawning child")
 		}
 
-		return false, nil
+		return false, nil, nil
 	}
 
 	log.Debugf("Got an environment update, restarting the child! %#v\n", envUpdate)
-	if err := s.restartChild(supState, envUpdate); err != nil {
+	newChildState, err := s.restartChild(supState, envUpdate)
+	if err != nil {
 		log.WithError(err).Errorf("Could not restart child")
-		return true, errors.Wrapf(err, "error restarting child")
+		return true, nil, errors.Wrapf(err, "error restarting child")
 	}
 
-	return false, nil
+	return false, newChildState, nil
 }
 
-func (s *Supervisor) handleChildStateUpdate(supState *state, childState *os.ProcessState) (bool, error) {
+func (s *Supervisor) handleChildStateUpdate(supState *state, childState *os.ProcessState) (bool, *state, error) {
 	if s.config.OneShot {
 		log.Debugf("Child process died; one-shot mode prevents restart!")
-		return true, nil
+		return true, nil, nil
 	}
 
 	log.WithFields(logrus.Fields{
@@ -108,12 +115,13 @@ func (s *Supervisor) handleChildStateUpdate(supState *state, childState *os.Proc
 		"userTime":   childState.UserTime(),
 	}).Debugf("Child process died; restarting")
 
-	if err := s.restartChild(supState, s.lastEnv); err != nil {
+	newChildState, err := s.restartChild(supState, s.lastEnv)
+	if err != nil {
 		log.WithError(err).Errorf("Could not restart child")
-		return true, errors.Wrapf(err, "error restarting child")
+		return true, nil, errors.Wrapf(err, "error restarting child")
 	}
 
-	return false, nil
+	return false, newChildState, nil
 }
 
 // spawnChild spawns the child process, writing the new exec.Cmd instance into the `*event` structure
@@ -127,20 +135,24 @@ func (s *Supervisor) spawnChild(supState *state, environ []string) error {
 	child := exec.CommandContext(supState.childCtx, program, s.config.Args()...)
 	child.Env = environ
 
-	stdoutPipe, err := child.StdoutPipe()
-	if err != nil {
-		return errors.Wrap(err, "could not get stdout pipe")
-	}
+	stdoutRPipe, stdoutWPipe := io.Pipe()
+	child.Stdout = stdoutWPipe
 
-	stderrPipe, err := child.StderrPipe()
-	if err != nil {
-		return errors.Wrap(err, "could not get stderr pipe")
-	}
+	stderrRPipe, stderrWPipe := io.Pipe()
+	child.Stderr = stderrWPipe
 
-	fwd := newForwarder(stdoutPipe, stderrPipe)
-	fwd.TeeStderr(s.config.ForwarderStderrWriters...)
-	fwd.TeeStdout(s.config.ForwarderStdoutWriters...)
-	fwd.Start(supState.childCtx)
+	stdoutFwd := forwarder.New(stdoutRPipe)
+	stdoutFwd.Tee(log.WithField("stream", "stdout").WriterLevel(logrus.InfoLevel))
+	stdoutFwd.Tee(s.config.ForwarderStdoutWriters...)
+	go stdoutFwd.WaitClose()
+
+	stderrFwd := forwarder.New(stderrRPipe)
+	stderrFwd.Tee(log.WithField("stream", "stderr").WriterLevel(logrus.InfoLevel))
+	stderrFwd.Tee(s.config.ForwarderStderrWriters...)
+	go stderrFwd.WaitClose()
+
+	stdoutFwd.Start(supState.childCtx)
+	stderrFwd.Start(supState.childCtx)
 
 	log.WithFields(logrus.Fields{
 		"program": program,
@@ -153,30 +165,34 @@ func (s *Supervisor) spawnChild(supState *state, environ []string) error {
 	log.WithField("pid", child.Process.Pid).Debugf("Child started!")
 	supState.child = child
 
-	go s.waitChild(supState.childCtx, child)
+	go s.waitChild(supState)
 
 	return nil
 }
 
-func (s *Supervisor) restartChild(supState *state, environ []string) error {
+func (s *Supervisor) restartChild(supState *state, environ []string) (*state, error) {
 	// When restarting the child, the previous child context needs to be
 	// cancelled and a new one needs to be created
-	supState.replaceChildContext()
+	// supState.replaceChildContext()
+	newChildState := newState(supState.parentCtx)
 
-	if err := s.spawnChild(supState, environ); err != nil {
+	if err := s.spawnChild(newChildState, environ); err != nil {
 		// If the child could not be restarted, cancel the above context
-		supState.childCancel()
-		return errors.Wrap(err, "could not restart child")
+		newChildState.childCancel()
+		return nil, errors.Wrap(err, "could not restart child")
 	}
 
-	return nil
+	return newChildState, nil
 }
 
-func (s *Supervisor) waitChild(ctx context.Context, child *exec.Cmd) {
-	err := child.Wait()
+func (s *Supervisor) waitChild(supState *state) {
+	err := supState.child.Wait()
 	if err != nil {
 		log.WithError(err).Errorf("Could not wait on child")
 	}
+
+	// Close the stdout/stderr pipes on the child. Before moving forward.
+	supState.closeChildOutputs()
 
 	// This is a gross hack to let childCtx short circuit
 	// responding on stateCh with a process state.
@@ -185,10 +201,10 @@ func (s *Supervisor) waitChild(ctx context.Context, child *exec.Cmd) {
 	// restarted, which would cause this waiter to finish and
 	// submit a process state, which would trigger another restart.
 	nextState := make(chan *os.ProcessState, 1)
-	nextState <- child.ProcessState
+	nextState <- supState.child.ProcessState
 
 	select {
-	case <-ctx.Done():
+	case <-supState.childCtx.Done():
 		return
 	case state := <-nextState:
 		s.stateCh <- state
@@ -203,7 +219,7 @@ func (s *Supervisor) haltAndWaitChild(child *exec.Cmd) error {
 
 	log.Infof("Waiting for child to halt")
 	if err := child.Wait(); err != nil {
-		if err, ok := err.(*exec.ExitError); ok == true {
+		if err, ok := err.(*exec.ExitError); ok {
 			return errors.Wrapf(
 				err,
 				"while waiting for child to halt: [code %d] %s",
