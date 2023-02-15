@@ -8,7 +8,6 @@ require (
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/go-test/deep v1.0.7 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
-	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/hashicorp/vault/api v1.0.5-0.20201001211907-38d91b749c77
@@ -20,7 +19,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/ramr/go-reaper v0.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1 // indirect
