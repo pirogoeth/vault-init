@@ -19,7 +19,7 @@ meta:
 
   repository:
     source:
-      uri: https://glow.dev.maio.me/seanj/vault-init.git
+      uri: https://github.com/pirogoeth/vault-init.git
       branch: master
 
   tasks:

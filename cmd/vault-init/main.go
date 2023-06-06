@@ -7,8 +7,8 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/initializer"
-	"glow.dev.maio.me/seanj/vault-init/internal/version"
+	"github.com/pirogoeth/vault-init/initializer"
+	"github.com/pirogoeth/vault-init/internal/version"
 )
 
 var log = logrus.WithField("stream", "main")

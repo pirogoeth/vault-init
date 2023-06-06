@@ -2,9 +2,9 @@ package initializer
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
-	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
@@ -32,16 +32,16 @@ const (
 type Config struct {
 	Command []string `arg:"positional"`
 
-	AccessPolicies    []string       `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
-	Debug             *bool          `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
-	DisableTokenRenew *bool          `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
-	LogFormat         string         `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
-	NoInheritToken    *bool          `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
-	NoReaper          *bool          `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
-	OneShot           *bool          `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
-	OrphanToken       *bool          `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
-	Paths             []string       `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
-	RefreshDuration   *time.Duration `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
+	AccessPolicies    []string `arg:"-A,--access-policy,separate,env:INIT_ACCESS_POLICIES" help:"Access policies to create Vault token with"`
+	Debug             *bool    `arg:"-D,--debug,env:INIT_DEBUG" help:"Enable super verbose debugging output, which may print sensitive data to terminal"`
+	DisableTokenRenew *bool    `arg:"--disable-token-renew,env:INIT_DISABLE_TOKEN_RENEW" help:"Make the child token unable to be renewed"`
+	LogFormat         string   `arg:"--log-format,env:INIT_LOG_FORMAT" help:"Change the format used for logging [default, plain, json]"`
+	NoInheritToken    *bool    `arg:"--no-inherit-token,env:INIT_NO_INHERIT_TOKEN" help:"Should the created token be passed down to the spawned child"`
+	NoReaper          *bool    `arg:"--without-reaper,env:INIT_NO_REAPER" help:"Disable the subprocess reaper"`
+	OneShot           *bool    `arg:"-O,--one-shot,env:INIT_ONE_SHOT" help:"Do not restart when the child process exits"`
+	OrphanToken       *bool    `arg:"--orphan-token,env:INIT_ORPHAN_TOKEN" help:"Should the created token be independent of the parent"`
+	Paths             []string `arg:"-p,--path,separate,env:INIT_PATHS" help:"Secret path to load into template context"`
+	RefreshDuration   string   `arg:"--refresh-duration,env:INIT_REFRESH_DURATION" help:"How frequently secrets should be checked for version changes"`
 
 	// TokenPeriod will cause the child token to be created as a periodic token:
 	// https://www.vaultproject.io/docs/concepts/tokens.html#periodic-tokens
@@ -55,14 +55,80 @@ type Config struct {
 	TelemetryAddress          string `arg:"--telemetry-address,env:INIT_TELEMETRY_ADDR" help:"Address to expose Prometheus telemetry on. Disabled if blank."`
 	TelemetryCollectorGolang  *bool  `arg:"--use-go-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_GOLANG" help:"Whether the Golang telemetry collector should be started."`
 	TelemetryCollectorProcess *bool  `arg:"--use-process-telemetry-collector,env:INIT_TELEMETRY_COLLECTOR_PROCESS" help:"Whether the process telemetry collector should be started."`
+
+	// ForwarderStdoutWriters allows an external embedder to capture the child's stdout.
+	ForwarderStdoutWriters []io.WriteCloser `arg:"-"`
+	// ForwarderStderrWriters allows an external embedder to capture the child's stderr.
+	ForwarderStderrWriters []io.WriteCloser `arg:"-"`
+}
+
+func (c *Config) Clone() (*Config, error) {
+	cloned := &Config{}
+
+	copy(cloned.Command, c.Command)
+	copy(cloned.AccessPolicies, c.AccessPolicies)
+	copy(cloned.Paths, c.Paths)
+
+	cloned.LogFormat = c.LogFormat
+	cloned.RefreshDuration = c.RefreshDuration
+	cloned.TokenPeriod = c.TokenPeriod
+	cloned.TokenTTL = c.TokenTTL
+	cloned.VaultAddress = c.VaultAddress
+	cloned.VaultToken = c.VaultToken
+	cloned.VaultTokenFile = c.VaultTokenFile
+	cloned.TelemetryAddress = c.TelemetryAddress
+
+	if c.Debug != nil {
+		cloned.Debug = new(bool)
+		*cloned.Debug = *c.Debug
+	}
+
+	if c.DisableTokenRenew != nil {
+		cloned.DisableTokenRenew = new(bool)
+		*cloned.DisableTokenRenew = *c.DisableTokenRenew
+	}
+
+	if c.NoInheritToken != nil {
+		cloned.NoInheritToken = new(bool)
+		*cloned.NoInheritToken = *c.NoInheritToken
+	}
+
+	if c.NoReaper != nil {
+		cloned.NoReaper = new(bool)
+		*cloned.NoReaper = *c.NoReaper
+	}
+
+	if c.OneShot != nil {
+		cloned.OneShot = new(bool)
+		*cloned.OneShot = *c.OneShot
+	}
+
+	if c.Verbose != nil {
+		cloned.Verbose = new(bool)
+		*cloned.Verbose = *c.Verbose
+	}
+
+	if c.TelemetryCollectorGolang != nil {
+		cloned.TelemetryCollectorGolang = new(bool)
+		*cloned.TelemetryCollectorGolang = *c.TelemetryCollectorGolang
+	}
+
+	if c.TelemetryCollectorProcess != nil {
+		cloned.TelemetryCollectorProcess = new(bool)
+		*cloned.TelemetryCollectorProcess = *c.TelemetryCollectorProcess
+	}
+
+	if err := cloned.ValidateAndSetDefaults(); err != nil {
+		return nil, fmt.Errorf("while cloning an initializer.Config, got error: %w", err)
+	}
+
+	return cloned, nil
 }
 
 // ValidateAndSetDefaults validates the arguments set inside of the
 // configuration and fills in certain slots with defaults, if the values
 // are unset.
 func (c *Config) ValidateAndSetDefaults() error {
-	var err error
-
 	if c.Debug == nil {
 		c.Debug = new(bool)
 		*c.Debug = defaultDebug
@@ -93,12 +159,8 @@ func (c *Config) ValidateAndSetDefaults() error {
 		*c.NoReaper = defaultNoReaper
 	}
 
-	if c.RefreshDuration == nil {
-		c.RefreshDuration = new(time.Duration)
-		*c.RefreshDuration, err = time.ParseDuration(defaultRefreshDuration)
-		if err != nil {
-			return errors.Wrapf(err, "could not parse default secret refresh duration: `%s`", defaultRefreshDuration)
-		}
+	if c.RefreshDuration == "" {
+		c.RefreshDuration = defaultRefreshDuration
 	}
 
 	if c.TokenPeriod == "" {

@@ -6,17 +6,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/logformatter"
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/supervise"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/dummy"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/real"
+	"github.com/pirogoeth/vault-init/pkg/logformatter"
+	"github.com/pirogoeth/vault-init/pkg/secret"
+	"github.com/pirogoeth/vault-init/pkg/supervise"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient/dummy"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient/real"
 )
 
 func Run(ctx context.Context, config *Config) error {
@@ -94,9 +95,15 @@ func Run(ctx context.Context, config *Config) error {
 
 	defer vaultClient.StopSecretRenewer(childSecret)
 
+	// Parse the secret refresh duration string -> time.Duration
+	refreshDuration, err := time.ParseDuration(config.RefreshDuration)
+	if err != nil {
+		log.WithError(err).Fatalf("Could not parse RefreshDuration")
+	}
+
 	// Start the secret watcher
 	log.WithField("paths", config.Paths).Debugf("Starting secrets watcher")
-	updateCh, err := vaultClient.StartWatcher(ctx, *config.RefreshDuration)
+	updateCh, err := vaultClient.StartWatcher(ctx, refreshDuration)
 	if err != nil {
 		log.WithError(err).Fatalf("Could not start secrets watcher")
 	}
@@ -105,9 +112,11 @@ func Run(ctx context.Context, config *Config) error {
 
 	// Configure the process supervisor
 	supervisorCfg := &supervise.Config{
-		Command:       config.Command,
-		DisableReaper: *config.NoReaper,
-		OneShot:       *config.OneShot,
+		Command:                config.Command,
+		DisableReaper:          *config.NoReaper,
+		OneShot:                *config.OneShot,
+		ForwarderStderrWriters: config.ForwarderStderrWriters,
+		ForwarderStdoutWriters: config.ForwarderStdoutWriters,
 	}
 
 	// Create the supervisor with the configuration
@@ -132,8 +141,8 @@ func Run(ctx context.Context, config *Config) error {
 		log.WithError(err).Errorf("Supervisor returned an error")
 	}
 
-	// Cleanup and shutdown
-	log.Infof("vault-init shutting down")
+	log.Infof("vault-init shut down")
+	cancel()
 
 	// Revoke the child token
 	err = vaultClient.RevokeSecret(childSecret)
@@ -150,14 +159,9 @@ func waitForSignal(ctx context.Context, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, os.Kill)
 
-	for {
-		select {
-		case sig := <-sigChan:
-			log.Infof("Received signal %s, stopping", sig)
-			cancel()
-			return
-		}
-	}
+	sig := <-sigChan
+	log.Infof("Received signal %s, stopping", sig)
+	cancel()
 }
 
 func startTelemetryServer(telemetryAddress string, useGolangCollector, useProcessCollector bool) {
