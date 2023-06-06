@@ -10,11 +10,11 @@ meta:
   registry:
     repository: containers.dev.maio.me
     auth:
-      username: ((glow_registry_ci.username))
-      password: ((glow_registry_ci.password))
+      username: ((harbor_seanj.username))
+      password: ((harbor_seanj.password))
     image:
       context: .
-      repo: (( concat meta.registry.repository "/pirogoeth/vault-init" ))
+      repo: (( concat meta.registry.repository "/seanj/vault-init" ))
       tag: latest
 
   repository:
@@ -31,13 +31,20 @@ meta:
   upstream:
     alpine:
       repo: "containers.dev.maio.me/library/alpine"
-      tag: "v3.10"
+      tag: "v3.13"
       auth:
-        .: (( inject meta.registry.auth ))
+        username: ((harbor_library.username))
+        password: ((harbor_library.password))
     debian:
       repo: "debian"
-      tag: "9-slim"
+      tag: "10-slim"
       auth: {}
     commons:
       uri: "https://glow.dev.maio.me/containers/commons.git"
       branch: "master"
+    golang:
+      repo: "containers.dev.maio.me/library/golang"
+      tag: "1.15.6"
+      auth:
+        username: ((harbor_library.username))
+        password: ((harbor_library.password))

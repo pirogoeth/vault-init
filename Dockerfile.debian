@@ -1,13 +1,15 @@
 FROM golang:latest AS build
 
+ADD . /source
 WORKDIR /source
-ADD . /source/
-RUN go install ./cmd/vault-init/...
+RUN apt update && \
+    apt install -y bash git make && \
+    make build out=/source/vault-init
 
 # ---
 FROM debian:latest
 LABEL maintainer="Sean Johnson <me@seanj.dev>"
 
-COPY --from=build /go/bin/vault-init /bin/vault-init
+COPY --from=build /source/vault-init /bin/vault-init
 
 CMD ["vault-init"]
