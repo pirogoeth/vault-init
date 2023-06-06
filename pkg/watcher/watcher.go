@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/pirogoeth/vault-init/internal/secret"
-	"github.com/pirogoeth/vault-init/internal/template"
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/secret"
+	"github.com/pirogoeth/vault-init/pkg/template"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
 )
 
 // Watcher watches the Client's secrets for updates and sends updated values

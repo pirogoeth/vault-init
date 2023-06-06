@@ -3,8 +3,8 @@ package real
 import (
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
-	"github.com/pirogoeth/vault-init/internal/watcher"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/watcher"
 )
 
 // Client is a wrapper around the Vault API client

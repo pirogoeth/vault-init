@@ -5,7 +5,7 @@ import (
 	"time"
 
 	vaultApi "github.com/hashicorp/vault/api"
-	"github.com/pirogoeth/vault-init/internal/secret"
+	"github.com/pirogoeth/vault-init/pkg/secret"
 )
 
 // TokenCreatorFunc is a function that returns a token that can be used by

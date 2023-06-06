@@ -6,7 +6,7 @@ import (
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
 )
 
 // NewClient creates a new Vault API client wrapper

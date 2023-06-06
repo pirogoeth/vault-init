@@ -12,12 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pirogoeth/vault-init/internal/logformatter"
-	"github.com/pirogoeth/vault-init/internal/secret"
-	"github.com/pirogoeth/vault-init/internal/supervise"
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
-	"github.com/pirogoeth/vault-init/internal/vaultclient/dummy"
-	"github.com/pirogoeth/vault-init/internal/vaultclient/real"
+	"github.com/pirogoeth/vault-init/pkg/logformatter"
+	"github.com/pirogoeth/vault-init/pkg/secret"
+	"github.com/pirogoeth/vault-init/pkg/supervise"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient/dummy"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient/real"
 )
 
 func Run(ctx context.Context, config *Config) error {

@@ -6,8 +6,8 @@ import (
 
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"github.com/pirogoeth/vault-init/internal/secret"
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/secret"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
 )
 
 // Check checks the Vault client's connection and authentication information.

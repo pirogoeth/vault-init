@@ -1,6 +1,6 @@
 package dummy
 
-import "github.com/pirogoeth/vault-init/internal/vaultclient"
+import "github.com/pirogoeth/vault-init/pkg/vaultclient"
 
 var _ vaultclient.VaultClient = (*Client)(nil)
 

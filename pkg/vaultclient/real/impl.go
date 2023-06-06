@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pirogoeth/vault-init/internal/secret"
-	"github.com/pirogoeth/vault-init/internal/vaultclient"
-	"github.com/pirogoeth/vault-init/internal/watcher"
+	"github.com/pirogoeth/vault-init/pkg/secret"
+	"github.com/pirogoeth/vault-init/pkg/vaultclient"
+	"github.com/pirogoeth/vault-init/pkg/watcher"
 )
 
 var _ vaultclient.VaultClient = (*Client)(nil)
