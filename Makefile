@@ -2,7 +2,7 @@ SHELL := $(shell which bash)
 
 goarch := $(shell go env GOARCH)
 goos := $(shell go env GOOS)
-out := vault-init_$(goos)_$(goarch)
+out := vault-init
 
 .PHONY: build
 build:

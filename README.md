@@ -2,6 +2,16 @@
 
 ![build status](https://concourse.dev.maio.me/api/v1/teams/main/pipelines/vault-init/badge)
 
+## Dependencies
+
+The only _external_ dependencies that exist are for `vault-init-test-harness`:
+
+- libdevmapper-dev
+- libgpgme-dev
+- libbtrfs-dev
+
+Note that the above packages are Ubuntu packages and you will need to find the appropriate packages for your distribution.
+
 ## Rationale
 
 Previously, I could use Nomad's templating to insert data from Vault into an application.
