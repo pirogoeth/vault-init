@@ -12,8 +12,8 @@ import (
 	"github.com/docker/docker/client"
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/util"
+	"github.com/pirogoeth/vault-init/pkg/harness/provisioner"
+	"github.com/pirogoeth/vault-init/pkg/harness/util"
 )
 
 var _ provisioner.Provisioner = (*Provisioner)(nil)

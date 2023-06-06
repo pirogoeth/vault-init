@@ -12,12 +12,12 @@ import (
 	"github.com/hashicorp/vault/api"
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"glow.dev.maio.me/seanj/vault-init/initializer"
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
-	dockerProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/docker"
-	podmanProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/podman"
-	unmanagedProv "glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner/unmanaged"
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/util/stringlist"
+	"github.com/pirogoeth/vault-init/initializer"
+	"github.com/pirogoeth/vault-init/pkg/harness/provisioner"
+	dockerProv "github.com/pirogoeth/vault-init/pkg/harness/provisioner/docker"
+	podmanProv "github.com/pirogoeth/vault-init/pkg/harness/provisioner/podman"
+	unmanagedProv "github.com/pirogoeth/vault-init/pkg/harness/provisioner/unmanaged"
+	"github.com/pirogoeth/vault-init/pkg/harness/util/stringlist"
 )
 
 func (s *Scenario) SetupFixtures(vaultCli *vaultApi.Client) error {

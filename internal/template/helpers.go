@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
 )
 
 func makeFuncMap() template.FuncMap {

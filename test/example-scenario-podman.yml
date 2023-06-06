@@ -43,4 +43,4 @@ tests:
     OTP: "{{.totp.code.Service.code}}"
   suite: test/suites/basic_test.go
   args:
-    - -coverpkg glow.dev.maio.me/seanj/vault-init
+    - -coverpkg github.com/pirogoeth/vault-init

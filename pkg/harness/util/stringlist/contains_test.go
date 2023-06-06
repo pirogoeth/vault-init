@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	defaultHaystack = []string{"go", "test", "-v", "-json", "glow.dev.maio.me/seanj/vault-init/pkg/harness/util/stringlist"}
+	defaultHaystack = []string{"go", "test", "-v", "-json", "github.com/pirogoeth/vault-init/pkg/harness/util/stringlist"}
 )
 
 func TestContainsTrue(t *testing.T) {

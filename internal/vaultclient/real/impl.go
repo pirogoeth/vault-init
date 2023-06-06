@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
-	"glow.dev.maio.me/seanj/vault-init/internal/watcher"
+	"github.com/pirogoeth/vault-init/internal/secret"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/watcher"
 )
 
 var _ vaultclient.VaultClient = (*Client)(nil)

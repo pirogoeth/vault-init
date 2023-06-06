@@ -1,6 +1,6 @@
 package dummy
 
-import "glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+import "github.com/pirogoeth/vault-init/internal/vaultclient"
 
 var _ vaultclient.VaultClient = (*Client)(nil)
 

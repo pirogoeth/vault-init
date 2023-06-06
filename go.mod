@@ -1,4 +1,4 @@
-module glow.dev.maio.me/seanj/vault-init
+module github.com/pirogoeth/vault-init
 
 go 1.15
 

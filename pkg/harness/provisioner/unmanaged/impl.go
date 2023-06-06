@@ -6,7 +6,7 @@ import (
 
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
+	"github.com/pirogoeth/vault-init/pkg/harness/provisioner"
 )
 
 var _ provisioner.Provisioner = (*Provisioner)(nil)

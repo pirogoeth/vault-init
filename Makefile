@@ -6,20 +6,20 @@ SHELL := $(shell which bash)
 build:
 ifdef out
 	GOOS=$(goos) GOARCH=$(goarch) go build \
-		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-ldflags "-X github.com/pirogoeth/vault-init/internal/version.Version=$(shell git describe --tags)" \
 		-o "$(out)_$(goos)_$(goarch)" \
 		./cmd/vault-init/...
 	GOOS=$(goos) GOARCH=$(goarch) go build \
-		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-ldflags "-X github.com/pirogoeth/vault-init/internal/version.Version=$(shell git describe --tags)" \
 		-o "$(out)-test-harness_$(goos)_$(goarch)" \
 		./cmd/vault-init-test-harness/...
 else
 	GOOS=$(goos) GOARCH=$(goarch) go build \
-		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-ldflags "-X github.com/pirogoeth/vault-init/internal/version.Version=$(shell git describe --tags)" \
 		-o "vault-init_$(goos)_$(goarch)" \
 		./cmd/vault-init/...
 	GOOS=$(goos) GOARCH=$(goarch) go build \
-		-ldflags "-X glow.dev.maio.me/seanj/vault-init/internal/version.Version=$(shell git describe --tags)" \
+		-ldflags "-X github.com/pirogoeth/vault-init/internal/version.Version=$(shell git describe --tags)" \
 		-o "vault-init-test-harness_$(goos)_$(goarch)" \
 		./cmd/vault-init-test-harness/...
 endif

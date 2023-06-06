@@ -6,8 +6,8 @@ import (
 
 	vaultApi "github.com/hashicorp/vault/api"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/secret"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
 )
 
 // Check checks the Vault client's connection and authentication information.

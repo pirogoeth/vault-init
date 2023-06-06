@@ -40,7 +40,7 @@ tests:
     SERVICE_VAULT_API_TOKEN: "{{.Vault.token}}"
     KEY: "{{.secret.data.shared.data.session_key}}"
     OTP: "{{.totp.code.Service.code}}"
-  suite: glow.dev.maio.me/seanj/vault-init/test/suite
+  suite: github.com/pirogoeth/vault-init/test/suite
   args:
     - -coverpkg
-    - glow.dev.maio.me/seanj/vault-init
+    - github.com/pirogoeth/vault-init

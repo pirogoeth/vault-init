@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/template"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/secret"
+	"github.com/pirogoeth/vault-init/internal/template"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
 )
 
 // Watcher watches the Client's secrets for updates and sends updated values

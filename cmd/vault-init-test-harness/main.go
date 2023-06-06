@@ -7,8 +7,8 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/version"
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness"
+	"github.com/pirogoeth/vault-init/internal/version"
+	"github.com/pirogoeth/vault-init/pkg/harness"
 )
 
 type argsT struct {

@@ -3,7 +3,7 @@ package suite
 import (
 	"testing"
 
-	"glow.dev.maio.me/seanj/vault-init/test/helpers"
+	"github.com/pirogoeth/vault-init/test/helpers"
 )
 
 func TestAssertInitialEnvironment(t *testing.T) {

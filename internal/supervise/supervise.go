@@ -10,7 +10,7 @@ import (
 	reaper "github.com/ramr/go-reaper"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/pkg/io/forwarder"
+	"github.com/pirogoeth/vault-init/pkg/io/forwarder"
 )
 
 // NewSupervisor creates a supervisor instance

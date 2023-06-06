@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"glow.dev.maio.me/seanj/vault-init/pkg/io/multiwritercloser"
+	"github.com/pirogoeth/vault-init/pkg/io/multiwritercloser"
 )
 
 func New(rc io.ReadCloser) *Forwarder {

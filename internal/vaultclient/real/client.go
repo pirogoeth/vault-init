@@ -6,7 +6,7 @@ import (
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
 )
 
 // NewClient creates a new Vault API client wrapper

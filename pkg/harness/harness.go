@@ -7,7 +7,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"glow.dev.maio.me/seanj/vault-init/pkg/harness/provisioner"
+	"github.com/pirogoeth/vault-init/pkg/harness/provisioner"
 )
 
 func LoadScenarios(scenarioPaths []string, opts *ScenarioOpts) ([]*Scenario, error) {

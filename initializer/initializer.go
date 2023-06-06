@@ -12,12 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
-	"glow.dev.maio.me/seanj/vault-init/internal/logformatter"
-	"glow.dev.maio.me/seanj/vault-init/internal/secret"
-	"glow.dev.maio.me/seanj/vault-init/internal/supervise"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/dummy"
-	"glow.dev.maio.me/seanj/vault-init/internal/vaultclient/real"
+	"github.com/pirogoeth/vault-init/internal/logformatter"
+	"github.com/pirogoeth/vault-init/internal/secret"
+	"github.com/pirogoeth/vault-init/internal/supervise"
+	"github.com/pirogoeth/vault-init/internal/vaultclient"
+	"github.com/pirogoeth/vault-init/internal/vaultclient/dummy"
+	"github.com/pirogoeth/vault-init/internal/vaultclient/real"
 )
 
 func Run(ctx context.Context, config *Config) error {
